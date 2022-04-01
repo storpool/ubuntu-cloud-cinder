@@ -1,15 +1,50 @@
-cinder (2:19.0.0-0ubuntu3~cloud0) focal-xena; urgency=medium
+cinder (2:20.0.0-0ubuntu1~cloud0) focal-yoga; urgency=medium
 
-  * New update for the Ubuntu Cloud Archive.
+  * New upstream release for the Ubuntu Cloud Archive.
 
- -- Openstack Ubuntu Testing Bot <openstack-testing-bot@ubuntu.com>  Tue, 08 Mar 2022 21:53:49 +0000
+ -- Openstack Ubuntu Testing Bot <openstack-testing-bot@ubuntu.com>  Fri, 01 Apr 2022 10:13:45 +0000
 
-cinder (2:19.0.0-0ubuntu3) impish; urgency=medium
+cinder (2:20.0.0-0ubuntu1) jammy; urgency=medium
 
-  * d/gbp.conf: Create stable/xena branch.
-  * d/control, d/rules: Bump debhelper compat to 12 (LP: #1960636).
+  * d/watch: Scope to 20.x.
+  * New upstream release for OpenStack Yoga.
+  * d/control: Align (Build-)Depends with upstream.
 
- -- Corey Bryant <corey.bryant@canonical.com>  Wed, 02 Mar 2022 09:18:12 -0500
+ -- Corey Bryant <corey.bryant@canonical.com>  Wed, 30 Mar 2022 15:49:31 -0400
+
+cinder (2:19.0.0+git2022030310.b49fb59a6-0ubuntu2) jammy; urgency=medium
+
+  * d/p/fix-qos-computation.patch: Cherry-pick from upstream review to
+    fix TypeError exception when generating QOS feature name (LP: #1948507).
+
+ -- Corey Bryant <corey.bryant@canonical.com>  Tue, 15 Mar 2022 11:08:32 -0400
+
+cinder (2:19.0.0+git2022030310.b49fb59a6-0ubuntu1) jammy; urgency=medium
+
+  * New upstream snapshot for OpenStack Yoga.
+
+ -- Corey Bryant <corey.bryant@canonical.com>  Thu, 03 Mar 2022 10:58:14 -0500
+
+cinder (2:19.0.0+git2022011215.23494a6d6-0ubuntu1) jammy; urgency=medium
+
+  * New upstream snapshot for OpenStack Yoga.
+  * d/control, d/rules: Bump debhelper compat to 13.
+
+ -- Corey Bryant <corey.bryant@canonical.com>  Wed, 12 Jan 2022 15:53:37 -0500
+
+cinder (2:19.0.0+git2021120811.e5ef39604-0ubuntu2) jammy; urgency=medium
+
+  * d/t/control: Add allow-stderr restriction to prevent autopkgtest failure
+    when SQLAlchemy issues a warning.
+
+ -- Corey Bryant <corey.bryant@canonical.com>  Mon, 13 Dec 2021 14:01:20 -0500
+
+cinder (2:19.0.0+git2021120811.e5ef39604-0ubuntu1) jammy; urgency=medium
+
+  * New upstream snapshot for OpenStack Yoga.
+  * d/control: Align (Build-)Depends with upstream.
+
+ -- Corey Bryant <corey.bryant@canonical.com>  Wed, 08 Dec 2021 11:39:46 -0500
 
 cinder (2:19.0.0-0ubuntu2) impish; urgency=medium
 

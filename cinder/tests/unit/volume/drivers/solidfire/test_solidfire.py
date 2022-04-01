@@ -1373,35 +1373,6 @@ class SolidFireVolumeTestCase(test.TestCase):
         self.assertTrue(migrated)
         self.assertEqual({}, updates)
 
-    @data(None, 'Success', 'Error', f'target:{f_uuid[0]}')
-    @mock.patch.object(solidfire.SolidFireDriver, '_get_sf_volume')
-    @mock.patch.object(solidfire.SolidFireDriver, '_get_sfaccount')
-    def test_attach_volume(self, mig_status, mock_get_sfaccount,
-                           mock_get_sf_volume):
-        mock_get_sfaccount.return_value = self.fake_sfaccount
-        i_uuid = 'fake_instance_uuid'
-        ctx = context.get_admin_context()
-        type_fields = {}
-        vol_type = fake_volume.fake_volume_type_obj(ctx, **type_fields)
-        utc_now = timeutils.utcnow().isoformat()
-        vol_fields = {
-            'id': f_uuid[0],
-            'created_at': utc_now,
-            'volume_type': vol_type,
-            'volume_type_id': vol_type.id,
-            'migration_status': mig_status,
-        }
-        vol = fake_volume.fake_volume_obj(ctx, **vol_fields)
-        sf_vol = self.fake_sfvol
-        mock_get_sf_volume.return_value = sf_vol
-
-        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
-        sfv.attach_volume(ctx, vol, i_uuid, 'fake_host', '/dev/sdf')
-        self.assertEqual(sf_vol['attributes']['attached_to'],
-                         i_uuid)
-        mock_get_sfaccount.assert_called()
-        mock_get_sf_volume.assert_called()
-
     def test_retype_with_qos_spec(self):
         test_type = {'name': 'sf-1',
                      'qos_specs_id': 'fb0576d7-b4b5-4cad-85dc-ca92e6a497d1',
@@ -3730,6 +3701,32 @@ class SolidFireVolumeTestCase(test.TestCase):
 
     @mock.patch.object(solidfire.SolidFireDriver,
                        '_do_intercluster_volume_migration')
+    def test_migrate_volume_retyping_status(
+            self, mock_do_intercluster_volume_migration):
+
+        ctx = context.get_admin_context()
+        type_fields = {'id': fakes.get_fake_uuid()}
+        src_vol_type = fake_volume.fake_volume_type_obj(ctx, **type_fields)
+
+        vol_fields = {
+            'id': fakes.get_fake_uuid(),
+            'volume_type': src_vol_type,
+            'host': 'fakeHost@fakeBackend#fakePool',
+            'status': 'retyping'
+        }
+
+        vol = fake_volume.fake_volume_obj(ctx, **vol_fields)
+        vol.volume_type = src_vol_type
+        host = {'host': 'fakeHost@fakeBackend#fakePool'}
+
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        result = sfv.migrate_volume(ctx, vol, host)
+
+        mock_do_intercluster_volume_migration.assert_not_called()
+        self.assertEqual((True, {}), result)
+
+    @mock.patch.object(solidfire.SolidFireDriver,
+                       '_do_intercluster_volume_migration')
     def test_migrate_volume_same_host_and_backend(
             self, mock_do_intercluster_volume_migration):
 
@@ -4192,3 +4189,40 @@ class SolidFireVolumeTestCase(test.TestCase):
             call('RemoveVolumePair', src_params, '8.0'),
             call('DeleteVolume', src_params),
             call('PurgeDeletedVolume', src_params)])
+
+    @data(True, False)
+    @mock.patch.object(solidfire.SolidFireDriver, '_create_cluster_reference')
+    @mock.patch.object(solidfire.SolidFireDriver, '_set_cluster_pairs')
+    @mock.patch.object(solidfire.SolidFireDriver, '_update_cluster_status')
+    @mock.patch.object(solidfire.SolidFireDriver, '_issue_api_request')
+    def test_list_volumes_by_name(self, has_endpoint, mock_issue_api_request,
+                                  mock_update_cluster_status,
+                                  mock_set_cluster_pairs,
+                                  mock_create_cluster_reference):
+        fake_sf_volume_name = 'fake-vol-name'
+        vol_fields = {
+            'id': fakes.get_fake_uuid(),
+            'name': fake_sf_volume_name
+        }
+        vol = fake_volume.fake_volume_obj(
+            context.get_admin_context(), **vol_fields)
+
+        fake_endpoint = None
+        volumes_list = [vol]
+
+        if has_endpoint:
+            fake_endpoint = self.fake_primary_cluster["endpoint"]
+            volumes_list = []
+
+        mock_issue_api_request.return_value = {
+            'result': {'volumes': volumes_list}}
+
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        result = (
+            sfv._list_volumes_by_name(fake_sf_volume_name,
+                                      endpoint=fake_endpoint))
+
+        mock_issue_api_request.assert_called_once_with(
+            'ListVolumes', {'volumeName': fake_sf_volume_name},
+            version='8.0', endpoint=fake_endpoint)
+        self.assertEqual(result, volumes_list)

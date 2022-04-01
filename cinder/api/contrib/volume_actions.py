@@ -217,6 +217,14 @@ class VolumeActionsController(wsgi.Controller):
             "name": params["image_name"]}
 
         if volume.encryption_key_id:
+            # encrypted volumes cannot be converted on upload
+            if (image_metadata['disk_format'] != 'raw'
+                    or image_metadata['container_format'] != 'bare'):
+                msg = _("An encrypted volume uploaded as an image must use "
+                        "'raw' disk_format and 'bare' container_format, "
+                        "which are the defaults for these options.")
+                raise webob.exc.HTTPBadRequest(explanation=msg)
+
             # Clone volume encryption key: the current key cannot
             # be reused because it will be deleted when the volume is
             # deleted.
@@ -317,6 +325,26 @@ class VolumeActionsController(wsgi.Controller):
         update_dict = {'bootable': bootable}
 
         self.volume_api.update(context, volume, update_dict)
+
+    @wsgi.Controller.api_version(mv.SUPPORT_REIMAGE_VOLUME)
+    @wsgi.response(HTTPStatus.ACCEPTED)
+    @wsgi.action('os-reimage')
+    @validation.schema(volume_action.reimage, mv.SUPPORT_REIMAGE_VOLUME)
+    def _reimage(self, req, id, body):
+        """Re-image a volume with specific image."""
+        context = req.environ['cinder.context']
+        # Not found exception will be handled at the wsgi level
+        volume = self.volume_api.get(context, id)
+        params = body['os-reimage']
+        reimage_reserved = params.get('reimage_reserved', 'False')
+        reimage_reserved = strutils.bool_from_string(reimage_reserved,
+                                                     strict=True)
+        image_id = params['image_id']
+        try:
+            self.volume_api.reimage(context, volume, image_id,
+                                    reimage_reserved)
+        except exception.InvalidVolume as error:
+            raise webob.exc.HTTPBadRequest(explanation=error.msg)
 
 
 class Volume_actions(extensions.ExtensionDescriptor):

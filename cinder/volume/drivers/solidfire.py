@@ -276,9 +276,13 @@ class SolidFireDriver(san.SanISCSIDriver):
                    by adding xNotPrimary to the retryable exception list
           2.2.2  - Fix bug #1896112 SolidFire Driver creates duplicate volume
                    when API response is lost
+          2.2.3  - Fix bug #1942090 SolidFire retype fails due to volume status
+                   as retyping.
+                   Fix bug #1932964 SolidFire duplicate volume name exception
+                   on migration and replication.
     """
 
-    VERSION = '2.2.2'
+    VERSION = '2.2.3'
 
     SUPPORTS_ACTIVE_ACTIVE = True
 
@@ -1015,10 +1019,10 @@ class SolidFireDriver(san.SanISCSIDriver):
         params['attributes'] = attributes
         return self._issue_api_request('ModifyVolume', params)
 
-    def _list_volumes_by_name(self, sf_volume_name):
+    def _list_volumes_by_name(self, sf_volume_name, endpoint=None):
         params = {'volumeName': sf_volume_name}
-        return self._issue_api_request(
-            'ListVolumes', params, version='8.0')['result']['volumes']
+        return self._issue_api_request('ListVolumes', params, version='8.0',
+                                       endpoint=endpoint)['result']['volumes']
 
     def _wait_volume_is_active(self, sf_volume_name):
 
@@ -1046,9 +1050,10 @@ class SolidFireDriver(san.SanISCSIDriver):
             raise SolidFireAPIException(msg)
 
     def _do_volume_create(self, sf_account, params, endpoint=None):
-
         sf_volume_name = params['name']
-        volumes_found = self._list_volumes_by_name(sf_volume_name)
+        volumes_found = self._list_volumes_by_name(sf_volume_name,
+                                                   endpoint=endpoint)
+
         if volumes_found:
             raise SolidFireDuplicateVolumeNames(vol_name=sf_volume_name)
 
@@ -2286,62 +2291,10 @@ class SolidFireDriver(san.SanISCSIDriver):
         properties['data']['discard'] = True
         return properties
 
-    def attach_volume(self, context, volume,
-                      instance_uuid, host_name,
-                      mountpoint):
-
-        sfaccount = self._get_sfaccount(volume['project_id'])
-        params = {'accountID': sfaccount['accountID']}
-
-        # In a retype of an attached volume scenario, the volume id will be
-        # as a target on 'migration_status', otherwise it'd be None.
-        migration_status = volume.get('migration_status')
-        if migration_status and 'target' in migration_status:
-            __, vol_id = migration_status.split(':')
-        else:
-            vol_id = volume['id']
-        sf_vol = self._get_sf_volume(vol_id, params)
-        if sf_vol is None:
-            LOG.error("Volume ID %s was not found on "
-                      "the SolidFire Cluster while attempting "
-                      "attach_volume operation!", volume['id'])
-            raise exception.VolumeNotFound(volume_id=volume['id'])
-
-        attributes = sf_vol['attributes']
-        attributes['attach_time'] = volume.get('attach_time', None)
-        attributes['attached_to'] = instance_uuid
-        params = {
-            'volumeID': sf_vol['volumeID'],
-            'attributes': attributes
-        }
-
-        self._issue_api_request('ModifyVolume', params)
-
     def terminate_connection(self, volume, properties, force):
         return self._sf_terminate_connection(volume,
                                              properties,
                                              force)
-
-    def detach_volume(self, context, volume, attachment=None):
-        sfaccount = self._get_sfaccount(volume['project_id'])
-        params = {'accountID': sfaccount['accountID']}
-
-        sf_vol = self._get_sf_volume(volume['id'], params)
-        if sf_vol is None:
-            LOG.error("Volume ID %s was not found on "
-                      "the SolidFire Cluster while attempting "
-                      "detach_volume operation!", volume['id'])
-            raise exception.VolumeNotFound(volume_id=volume['id'])
-
-        attributes = sf_vol['attributes']
-        attributes['attach_time'] = None
-        attributes['attached_to'] = None
-        params = {
-            'volumeID': sf_vol['volumeID'],
-            'attributes': attributes
-        }
-
-        self._issue_api_request('ModifyVolume', params)
 
     def accept_transfer(self, context, volume,
                         new_user, new_project):
@@ -2522,9 +2475,10 @@ class SolidFireDriver(san.SanISCSIDriver):
         LOG.info("Migrate volume %(vol_id)s to %(host)s.",
                  {"vol_id": volume.id, "host": host["host"]})
 
-        if volume.status != fields.VolumeStatus.AVAILABLE:
-            msg = _("Volume status must be 'available' to execute "
-                    "storage assisted migration.")
+        if (volume.status != fields.VolumeStatus.AVAILABLE and
+                volume.status != fields.VolumeStatus.RETYPING):
+            msg = _("Volume status must be 'available' or 'retyping' to "
+                    "execute storage assisted migration.")
             LOG.error(msg)
             raise exception.InvalidVolume(reason=msg)
 

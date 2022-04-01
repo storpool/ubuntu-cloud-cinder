@@ -1,4 +1,4 @@
-# Copyright (C) 2020, Hitachi, Ltd.
+# Copyright (C) 2020, 2021, Hitachi, Ltd.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -14,17 +14,22 @@
 #
 """iSCSI module for Hitachi HBSD Driver."""
 
+import os
+
 from oslo_utils import excutils
 
 from cinder import interface
 from cinder.volume import driver
 from cinder.volume.drivers.hitachi import hbsd_common as common
+from cinder.volume.drivers.hitachi import hbsd_rest as rest
+from cinder.volume.drivers.hitachi import hbsd_rest_iscsi as rest_iscsi
 from cinder.volume.drivers.hitachi import hbsd_utils as utils
 from cinder.volume import volume_utils
 
 MSG = utils.HBSDMsg
 
 _DRIVER_INFO = {
+    'version': utils.VERSION,
     'proto': 'iSCSI',
     'hba_id': 'initiator',
     'hba_id_type': 'iSCSI initiator IQN',
@@ -34,8 +39,18 @@ _DRIVER_INFO = {
     'volume_backend_name': '%(prefix)siSCSI' % {
         'prefix': utils.DRIVER_PREFIX,
     },
-    'volume_opts': [],
     'volume_type': 'iscsi',
+    'param_prefix': utils.PARAM_PREFIX,
+    'vendor_name': utils.VENDOR_NAME,
+    'driver_dir_name': utils.DRIVER_DIR_NAME,
+    'driver_prefix': utils.DRIVER_PREFIX,
+    'driver_file_prefix': utils.DRIVER_FILE_PREFIX,
+    'target_prefix': utils.TARGET_PREFIX,
+    'hdp_vol_attr': utils.HDP_VOL_ATTR,
+    'hdt_vol_attr': utils.HDT_VOL_ATTR,
+    'nvol_ldev_type': utils.NVOL_LDEV_TYPE,
+    'target_iqn_suffix': utils.TARGET_IQN_SUFFIX,
+    'pair_attr': utils.PAIR_ATTR,
 }
 
 
@@ -52,13 +67,16 @@ class HBSDISCSIDriver(driver.ISCSIDriver):
         2.0.0 - Major redesign of the driver. This version requires the REST
                 API for communication with the storage backend.
         2.1.0 - Add Cinder generic volume groups.
+        2.2.0 - Add maintenance parameters.
+        2.2.1 - Make the parameters name variable for supporting OEM storages.
+        2.2.2 - Add Target Port Assignment.
 
     """
 
-    VERSION = common.VERSION
+    VERSION = utils.VERSION
 
     # ThirdPartySystems wiki page
-    CI_WIKI_NAME = "Hitachi_VSP_CI"
+    CI_WIKI_NAME = utils.CI_WIKI_NAME
 
     def __init__(self, *args, **kwargs):
         """Initialize instance variables."""
@@ -68,8 +86,22 @@ class HBSDISCSIDriver(driver.ISCSIDriver):
         super(HBSDISCSIDriver, self).__init__(*args, **kwargs)
 
         self.configuration.append_config_values(common.COMMON_VOLUME_OPTS)
-        self.common = utils.import_object(
-            self.configuration, _DRIVER_INFO, kwargs.get('db'))
+        os.environ['LANG'] = 'C'
+        self.common = self._init_common(self.configuration, kwargs.get('db'))
+
+    def _init_common(self, conf, db):
+        return rest_iscsi.HBSDRESTISCSI(conf, _DRIVER_INFO, db)
+
+    @staticmethod
+    def get_driver_options():
+        additional_opts = HBSDISCSIDriver._get_oslo_driver_opts(
+            *(common._INHERITED_VOLUME_OPTS +
+              rest._REQUIRED_REST_OPTS +
+              ['driver_ssl_cert_verify', 'driver_ssl_cert_path',
+               'san_api_port', ]))
+        return (common.COMMON_VOLUME_OPTS +
+                rest.REST_VOLUME_OPTS +
+                additional_opts)
 
     def check_for_setup_error(self):
         pass
@@ -191,7 +223,8 @@ class HBSDISCSIDriver(driver.ISCSIDriver):
     @volume_utils.trace
     def initialize_connection_snapshot(self, snapshot, connector, **kwargs):
         """Initialize connection between the server and the snapshot."""
-        return self.common.initialize_connection(snapshot, connector)
+        return self.common.initialize_connection(
+            snapshot, connector, is_snapshot=True)
 
     @volume_utils.trace
     def terminate_connection_snapshot(self, snapshot, connector, **kwargs):

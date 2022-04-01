@@ -145,7 +145,8 @@ class Volume(cleanable.CinderCleanableObject, base.CinderObject,
 
     @classmethod
     def _get_expected_attrs(cls, context, *args, **kwargs):
-        expected_attrs = ['metadata', 'volume_type', 'volume_type.extra_specs']
+        expected_attrs = ['metadata', 'volume_type', 'volume_type.extra_specs',
+                          'volume_attachment']
         if context.is_admin:
             expected_attrs.append('admin_metadata')
 
@@ -343,6 +344,23 @@ class Volume(cleanable.CinderCleanableObject, base.CinderObject,
                             'False!!  Fix code here')
             updates['use_quota'] = use_quota
 
+    def populate_consistencygroup(self):
+        """Populate CG fields based on group fields.
+
+        Method assumes that consistencygroup_id and consistencygroup fields
+        have not already been set.
+
+        This is a hack to support backward compatibility of consistencygroup,
+        where we set the fields but don't want to write them to the DB, so we
+        mark them as not changed, so they won't be stored on the next save().
+        """
+        self.consistencygroup_id = self.group_id
+        if self.group_id and self.obj_attr_is_set('group'):
+            cg = objects.ConsistencyGroup()
+            cg.from_group(self.group)
+            self.consistencygroup = cg
+        self.obj_reset_changes(['consistencygroup', 'consistencygroup_id'])
+
     def create(self):
         if self.obj_attr_is_set('id'):
             raise exception.ObjectActionError(action='create',
@@ -514,7 +532,8 @@ class Volume(cleanable.CinderCleanableObject, base.CinderObject,
         # end of migration because we want to keep the original volume id
         # in the DB but now pointing to the migrated volume.
         skip = ({'id', 'provider_location', 'glance_metadata', 'use_quota',
-                 'volume_type'} | set(self.obj_extra_fields))
+                 'volume_type', 'volume_attachment'}
+                | set(self.obj_extra_fields))
         for key in set(dest_volume.fields.keys()) - skip:
             # Only swap attributes that are already set.  We do not want to
             # unexpectedly trigger a lazy-load.

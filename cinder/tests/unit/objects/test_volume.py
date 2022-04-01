@@ -29,6 +29,18 @@ from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit import objects as test_objects
 
+fake_group = {
+    'id': fake.GROUP_ID,
+    'user_id': fake.USER_ID,
+    'project_id': fake.PROJECT_ID,
+    'host': 'fake_host',
+    'availability_zone': 'fake_az',
+    'name': 'fake_name',
+    'description': 'fake_description',
+    'group_type_id': fake.GROUP_TYPE_ID,
+    'status': fields.GroupStatus.CREATING,
+}
+
 
 @ddt.ddt
 class TestVolume(test_objects.BaseObjectsTestCase):
@@ -472,7 +484,8 @@ class TestVolume(test_objects.BaseObjectsTestCase):
         # finish_volume_migration
         ignore_keys = ('id', 'provider_location', '_name_id',
                        'migration_status', 'display_description', 'status',
-                       'volume_glance_metadata', 'volume_type', 'use_quota')
+                       'volume_glance_metadata', 'volume_type', 'use_quota',
+                       'volume_attachment')
 
         dest_vol_dict = {k: updated_dest_volume[k] for k in
                          updated_dest_volume.keys() if k not in ignore_keys}
@@ -523,7 +536,8 @@ class TestVolume(test_objects.BaseObjectsTestCase):
             self, volume_attachment_get,
             volume_detached,
             metadata_delete):
-        va_objs = [objects.VolumeAttachment(context=self.context, id=i)
+        va_objs = [objects.VolumeAttachment(context=self.context, id=i,
+                                            volume_id=fake.VOLUME_ID)
                    for i in [fake.OBJECT_ID, fake.OBJECT2_ID, fake.OBJECT3_ID]]
         # As changes are not saved, we need reset it here. Later changes
         # will be checked.
@@ -536,6 +550,7 @@ class TestVolume(test_objects.BaseObjectsTestCase):
         admin_context = context.get_admin_context()
         volume = fake_volume.fake_volume_obj(
             admin_context,
+            id=fake.VOLUME_ID,
             volume_attachment=va_list,
             volume_admin_metadata=[{'key': 'attached_mode',
                                     'value': 'rw'}])
@@ -567,7 +582,7 @@ class TestVolume(test_objects.BaseObjectsTestCase):
             admin_context,
             volume_admin_metadata=[{'key': 'attached_mode',
                                     'value': 'rw'}])
-        self.assertFalse(volume.obj_attr_is_set('volume_attachment'))
+        self.assertEqual([], volume.volume_attachment.objects)
         volume_detached.return_value = ({'status': 'in-use'}, None)
         with mock.patch.object(admin_context, 'elevated') as mock_elevated:
             mock_elevated.return_value = admin_context
@@ -707,3 +722,21 @@ class TestVolumeList(test_objects.BaseObjectsTestCase):
         include_mock.assert_called_once_with(self.context, cluster,
                                              mock.sentinel.partial_rename,
                                              **filters)
+
+    @mock.patch('cinder.db.group_create',
+                return_value=fake_group)
+    def test_populate_consistencygroup(self, mock_db_grp_create):
+        db_volume = fake_volume.fake_db_volume()
+        volume = objects.Volume._from_db_object(self.context,
+                                                objects.Volume(), db_volume)
+
+        fake_grp = fake_group.copy()
+        del fake_grp['id']
+        group = objects.Group(context=self.context,
+                              **fake_grp)
+        group.create()
+        volume.group_id = group.id
+        volume.group = group
+        volume.populate_consistencygroup()
+        self.assertEqual(volume.group_id, volume.consistencygroup_id)
+        self.assertEqual(volume.group.id, volume.consistencygroup.id)

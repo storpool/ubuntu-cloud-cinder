@@ -18,7 +18,6 @@ from oslo_utils import importutils
 from cinder import context
 from cinder import db
 from cinder.db.sqlalchemy import api as sqla_db
-from cinder import exception
 from cinder.objects import fields
 from cinder.objects import volume_attachment
 from cinder.tests.unit.api.v2 import fakes as v2_fakes
@@ -70,9 +69,7 @@ class AttachmentManagerTestCase(test.TestCase):
                   'attach_mode': 'rw'}
         attachment_ref = db.volume_attach(self.context, values)
         with mock.patch.object(
-                self.manager, '_notify_about_volume_usage'),\
-                mock.patch.object(
-                self.manager.driver, 'attach_volume') as mock_attach:
+                self.manager, '_notify_about_volume_usage'):
             expected = {
                 'encrypted': False,
                 'qos_specs': None,
@@ -88,11 +85,6 @@ class AttachmentManagerTestCase(test.TestCase):
                                  vref,
                                  connector,
                                  attachment_ref.id))
-            mock_attach.assert_called_once_with(self.context,
-                                                vref,
-                                                attachment_ref.instance_uuid,
-                                                connector['host'],
-                                                "na")
             expected = {
                 'encrypted': False,
                 'qos_specs': None,
@@ -137,13 +129,49 @@ class AttachmentManagerTestCase(test.TestCase):
         attachment_ref = db.volume_attachment_get(
             self.context,
             attachment_ref['id'])
+
+        vref.refresh()
+        expected_status = (vref.status, vref.attach_status,
+                           attachment_ref.attach_status)
+
         self.manager.attachment_delete(self.context,
                                        attachment_ref['id'],
                                        vref)
-        self.assertRaises(exception.VolumeAttachmentNotFound,
-                          db.volume_attachment_get,
-                          self.context,
-                          attachment_ref.id)
+        # Manager doesn't change the resource status. It is changed on the API
+        attachment_ref = db.volume_attachment_get(self.context,
+                                                  attachment_ref.id)
+        vref.refresh()
+        self.assertEqual(
+            expected_status,
+            (vref.status, vref.attach_status, attachment_ref.attach_status))
+
+    def test_attachment_delete_remove_export_fail(self):
+        """attachment_delete removes attachment on remove_export failure."""
+        self.mock_object(self.manager.driver, 'remove_export',
+                         side_effect=Exception)
+        # Report that the connection is not shared
+        self.mock_object(self.manager, '_connection_terminate',
+                         return_value=False)
+
+        vref = tests_utils.create_volume(self.context, status='in-use',
+                                         attach_status='attached')
+        values = {'volume_id': vref.id, 'volume_host': vref.host,
+                  'attach_status': 'reserved', 'instance_uuid': fake.UUID1}
+        attach = db.volume_attach(self.context, values)
+        # Confirm the volume OVO has the attachment before the deletion
+        vref.refresh()
+        expected_vol_status = (vref.status, vref.attach_status)
+        self.assertEqual(1, len(vref.volume_attachment))
+
+        self.manager.attachment_delete(self.context, attach.id, vref)
+
+        # Manager doesn't change the resource status. It is changed on the API
+        attachment = db.volume_attachment_get(self.context, attach.id)
+        self.assertEqual(attach.attach_status, attachment.attach_status)
+
+        vref = db.volume_get(self.context, vref.id)
+        self.assertEqual(expected_vol_status,
+                         (vref.status, vref.attach_status))
 
     def test_attachment_delete_multiple_attachments(self):
         volume_params = {'status': 'available'}
@@ -161,11 +189,16 @@ class AttachmentManagerTestCase(test.TestCase):
         @mock.patch.object(self.context, 'elevated')
         @mock.patch.object(self.manager, '_connection_terminate')
         @mock.patch.object(self.manager.driver, 'remove_export')
-        @mock.patch.object(self.manager.driver, 'detach_volume')
-        def _test(mock_detach, mock_rm_export, mock_con_term, mock_elevated,
+        def _test(mock_rm_export, mock_con_term, mock_elevated,
                   mock_db_detached, mock_db_meta_delete, mock_get_attachment):
             mock_elevated.return_value = self.context
             mock_con_term.return_value = False
+            mock_db_detached.return_value = (
+                {'status': 'available',
+                 'attach_status': fields.VolumeAttachStatus.DETACHED},
+                {'attach_status': fields.VolumeAttachStatus.DETACHED,
+                 'deleted': True}
+            )
 
             # test single attachment. This should call
             # detach and remove_export
@@ -173,8 +206,6 @@ class AttachmentManagerTestCase(test.TestCase):
 
             self.manager.attachment_delete(self.context, attachment1.id, vref)
 
-            mock_detach.assert_called_once_with(self.context, vref,
-                                                attachment1)
             mock_db_detached.called_once_with(self.context, vref,
                                               attachment1.id)
             mock_db_meta_delete.called_once_with(self.context, vref.id,
@@ -186,7 +217,6 @@ class AttachmentManagerTestCase(test.TestCase):
             mock_con_term.return_value = True
             vref.volume_attachment.objects.append(attachment2)
 
-            mock_detach.reset_mock()
             mock_rm_export.reset_mock()
             mock_db_detached.reset_mock()
             mock_db_meta_delete.reset_mock()

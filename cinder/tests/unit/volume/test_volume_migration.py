@@ -288,12 +288,11 @@ class VolumeMigrationTestCase(base.BaseVolumeTestCase):
         volume_get.return_value = fake_new_volume
         volume = tests_utils.create_volume(self.context, size=1,
                                            host=CONF.host)
-        volume_attach = tests_utils.attach_volume(
-            self.context, volume['id'], fake_uuid, attached_host, '/dev/vda')
-        self.assertIsNotNone(volume_attach['volume_attachment'][0]['id'])
-        self.assertEqual(
-            fake_uuid, volume_attach['volume_attachment'][0]['instance_uuid'])
-        self.assertEqual('in-use', volume_attach['status'])
+        volume = tests_utils.attach_volume(
+            self.context, volume, fake_uuid, attached_host, '/dev/vda')
+        self.assertIsNotNone(volume.volume_attachment[0].id)
+        self.assertEqual(fake_uuid, volume.volume_attachment[0].instance_uuid)
+        self.assertEqual('in-use', volume.status)
         self.volume._migrate_volume_generic(self.context, volume,
                                             host_obj, None)
         self.assertFalse(migrate_volume_completion.called)
@@ -658,11 +657,12 @@ class VolumeMigrationTestCase(base.BaseVolumeTestCase):
                                                previous_status=previous_status)
         attachment = None
         if status == 'in-use':
-            vol = tests_utils.attach_volume(self.context, old_volume.id,
-                                            instance_uuid, attached_host,
-                                            '/dev/vda')
-            self.assertEqual('in-use', vol['status'])
-            attachment = vol['volume_attachment'][0]
+            old_volume = tests_utils.attach_volume(self.context, old_volume,
+                                                   instance_uuid,
+                                                   attached_host,
+                                                   '/dev/vda')
+            self.assertEqual('in-use', old_volume.status)
+            attachment = old_volume.volume_attachment[0]
         target_status = 'target:%s' % old_volume.id
         new_host = CONF.host + 'new'
         new_volume = tests_utils.create_volume(self.context, size=0,
@@ -675,8 +675,7 @@ class VolumeMigrationTestCase(base.BaseVolumeTestCase):
                 mock.patch.object(volume_rpcapi.VolumeAPI,
                                   'attach_volume') as mock_attach_volume,\
                 mock.patch.object(volume_rpcapi.VolumeAPI,
-                                  'update_migrated_volume'),\
-                mock.patch.object(self.volume.driver, 'attach_volume'):
+                                  'update_migrated_volume'):
             mock_attach_volume.side_effect = self.fake_attach_volume
             old_volume_host = old_volume.host
             new_volume_host = new_volume.host

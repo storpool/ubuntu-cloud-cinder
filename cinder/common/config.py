@@ -129,7 +129,9 @@ global_opts = [
                      'with its options'),
     cfg.BoolOpt('no_snapshot_gb_quota',
                 default=False,
-                help='Whether snapshots count against gigabyte quota'),
+                help="Whether snapshots sizes count against global and per "
+                     "volume type gigabyte quotas. By default snapshots' "
+                     "sizes are counted."),
     cfg.StrOpt('transfer_api_class',
                default='cinder.transfer.api.API',
                help='The full class name of the volume transfer API class'),
@@ -145,9 +147,12 @@ auth_opts = [
     cfg.StrOpt('auth_strategy',
                default='keystone',
                choices=[('noauth', 'Do not perform authentication'),
+                        ('noauth_include_project_id',
+                         'Do not perform authentication, and include a'
+                         ' project_id in API URLs'),
                         ('keystone', 'Authenticate using keystone')],
-               help='The strategy to use for auth. Supports noauth or '
-                    'keystone.'),
+               help='The strategy to use for auth. Supports noauth,'
+                    ' noauth_include_project_id or keystone.'),
 ]
 
 backup_opts = [

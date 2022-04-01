@@ -47,9 +47,10 @@ class BackupAPI(rpc.RPCAPI):
         2.0 - Remove 1.x compatibility
         2.1 - Adds set_log_levels and get_log_levels
         2.2 - Adds publish_service_capabilities
+        2.3 - Adds continue_backup call
     """
 
-    RPC_API_VERSION = '2.2'
+    RPC_API_VERSION = '2.3'
     RPC_DEFAULT_VERSION = '2.0'
     TOPIC = constants.BACKUP_TOPIC
     BINARY = 'cinder-backup'
@@ -58,6 +59,12 @@ class BackupAPI(rpc.RPCAPI):
         LOG.debug("create_backup in rpcapi backup_id %s", backup.id)
         cctxt = self._get_cctxt(server=backup.host)
         cctxt.cast(ctxt, 'create_backup', backup=backup)
+
+    def continue_backup(self, ctxt, backup, backup_device):
+        LOG.debug("continue_backup in rpcapi backup_id %s", backup.id)
+        cctxt = self._get_cctxt(server=backup.host)
+        cctxt.cast(ctxt, 'continue_backup', backup=backup,
+                   backup_device=backup_device)
 
     def restore_backup(self, ctxt, backup_host, backup, volume_id):
         LOG.debug("restore_backup in rpcapi backup_id %s", backup.id)
@@ -70,7 +77,7 @@ class BackupAPI(rpc.RPCAPI):
         cctxt = self._get_cctxt(server=backup.host)
         cctxt.cast(ctxt, 'delete_backup', backup=backup)
 
-    def export_record(self, ctxt, backup):
+    def export_record(self, ctxt, backup) -> dict:
         LOG.debug("export_record in rpcapi backup_id %(id)s "
                   "on host %(host)s.",
                   {'id': backup.id,
@@ -79,7 +86,7 @@ class BackupAPI(rpc.RPCAPI):
         return cctxt.call(ctxt, 'export_record', backup=backup)
 
     def import_record(self, ctxt, host, backup, backup_service, backup_url,
-                      backup_hosts):
+                      backup_hosts) -> None:
         LOG.debug("import_record rpcapi backup id %(id)s "
                   "on host %(host)s for backup_url %(url)s.",
                   {'id': backup.id, 'host': host, 'url': backup_url})
@@ -97,7 +104,7 @@ class BackupAPI(rpc.RPCAPI):
         cctxt = self._get_cctxt(server=backup.host)
         return cctxt.cast(ctxt, 'reset_status', backup=backup, status=status)
 
-    def check_support_to_force_delete(self, ctxt, host):
+    def check_support_to_force_delete(self, ctxt, host) -> bool:
         LOG.debug("Check if backup driver supports force delete "
                   "on host %(host)s.", {'host': host})
         cctxt = self._get_cctxt(server=host)

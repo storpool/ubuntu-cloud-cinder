@@ -64,6 +64,7 @@ class HuaweiConf(object):
             self._lun_type,
             self._lun_ready_wait_interval,
             self._lun_copy_wait_interval,
+            self._lun_copy_speed,
             self._lun_timeout,
             self._lun_write_type,
             self._lun_prefetch,
@@ -71,6 +72,7 @@ class HuaweiConf(object):
             self._lun_read_cache_policy,
             self._lun_write_cache_policy,
             self._storage_pools,
+            self._get_local_minimum_fc_initiator,
         )
 
         for f in attr_funcs:
@@ -98,7 +100,7 @@ class HuaweiConf(object):
             need_encode = True
 
         if need_encode:
-            tree.write(self.conf.cinder_huawei_conf_file, 'UTF-8')
+            tree.write(self.conf.cinder_huawei_conf_file, encoding='UTF-8')
 
     def _san_address(self, xml_root):
         text = xml_root.findtext('Storage/RestURL')
@@ -400,3 +402,38 @@ class HuaweiConf(object):
             }
 
         setattr(self.conf, 'replication', config)
+
+    def _lun_copy_speed(self, xml_root):
+        text = xml_root.findtext('LUN/LUNCopySpeed')
+        if text and text.strip() not in constants.LUN_COPY_SPEED_TYPES:
+            msg = (_("Invalid LUNCopySpeed '%(text)s', LUNCopySpeed must "
+                     "be between %(low)s and %(high)s.")
+                   % {"text": text, "low": constants.LUN_COPY_SPEED_LOW,
+                      "high": constants.LUN_COPY_SPEED_HIGHEST})
+            LOG.error(msg)
+            raise exception.InvalidInput(reason=msg)
+
+        if not text:
+            speed = constants.LUN_COPY_SPEED_MEDIUM
+        else:
+            speed = text.strip()
+        setattr(self.conf, 'lun_copy_speed', int(speed))
+
+    def _get_local_minimum_fc_initiator(self, xml_root):
+        text = xml_root.findtext('FC/MinOnlineFCInitiator')
+        minimum_fc_initiator = constants.DEFAULT_MINIMUM_FC_INITIATOR_ONLINE
+
+        if not text:
+            LOG.info("MinOnlineFCInitiator not set, using default.")
+            setattr(self.conf, 'min_fc_ini_online', minimum_fc_initiator)
+            return
+
+        text = text.strip()
+        if not text.isdigit():
+            msg = (_("Invalid FC MinOnlineFCInitiator '%s', "
+                     "MinOnlineFCInitiator must be a digit.") % text)
+            LOG.error(msg)
+            raise exception.InvalidInput(reason=msg)
+
+        minimum_fc_initiator = int(text)
+        setattr(self.conf, 'min_fc_ini_online', minimum_fc_initiator)
