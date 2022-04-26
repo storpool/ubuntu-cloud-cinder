@@ -1,4 +1,4 @@
-cinder (2:19.0.0-0ubuntu2~cloud0+0~0~0.sp2) focal-xena; urgency=medium
+cinder (2:19.0.0-0ubuntu3~cloud0+0~0~0.sp1) focal-xena; urgency=medium
 
   * Non-maintainer upload for patch tracking only.
   * Add three more patches for the StorPool Cinder driver:
@@ -7,6 +7,19 @@ cinder (2:19.0.0-0ubuntu2~cloud0+0~0~0.sp2) focal-xena; urgency=medium
     - storpool-clone-image
 
  -- Peter Pentchev <pp@storpool.com>  Tue, 26 Apr 2022 13:21:29 +0300
+
+cinder (2:19.0.0-0ubuntu3~cloud0) focal-xena; urgency=medium
+
+  * New update for the Ubuntu Cloud Archive.
+
+ -- Openstack Ubuntu Testing Bot <openstack-testing-bot@ubuntu.com>  Tue, 08 Mar 2022 21:53:49 +0000
+
+cinder (2:19.0.0-0ubuntu3) impish; urgency=medium
+
+  * d/gbp.conf: Create stable/xena branch.
+  * d/control, d/rules: Bump debhelper compat to 12 (LP: #1960636).
+
+ -- Corey Bryant <corey.bryant@canonical.com>  Wed, 02 Mar 2022 09:18:12 -0500
 
 cinder (2:19.0.0-0ubuntu2~cloud0+0~0~0.sp1) focal-xena; urgency=medium
 
