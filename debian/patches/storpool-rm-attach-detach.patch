@@ -12,7 +12,7 @@ Description: StorPool: drop _attach_volume() and _detach_volume().
  Change-Id: I5da7ae04b87b4fd52a682a6545060e852174f6c8
 Origin: https://review.opendev.org/c/openstack/cinder/+/787296
 Author: Peter Penchev <openstack-dev@storpool.com>
-Last-Update: 2010-10-11
+Last-Update: 2022-04-26
 
 --- a/cinder/tests/unit/volume/drivers/test_storpool.py
 +++ b/cinder/tests/unit/volume/drivers/test_storpool.py
@@ -41,7 +41,7 @@ Last-Update: 2010-10-11
  #    All Rights Reserved.
  #
  #    Licensed under the Apache License, Version 2.0 (the "License"); you may
-@@ -90,6 +90,8 @@
+@@ -90,9 +90,11 @@
          1.2.2   - Reintroduce the driver into OpenStack Queens,
                    add ignore_errors to the internal _detach_volume() method
          1.2.3   - Advertise some more driver capabilities.
@@ -49,7 +49,11 @@ Last-Update: 2010-10-11
 +                  connector will handle this.
      """
  
-     VERSION = '1.2.3'
+-    VERSION = '1.2.3'
++    VERSION = '2.0.0'
+     CI_WIKI_NAME = 'StorPool_distributed_storage_CI'
+ 
+     def __init__(self, *args, **kwargs):
 @@ -167,6 +169,7 @@
                  'data': {
                      'client_id': self._storpool_client_id(connector),

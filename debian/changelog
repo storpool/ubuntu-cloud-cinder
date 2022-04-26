@@ -1,3 +1,13 @@
+cinder (2:19.0.0-0ubuntu2~cloud0+0~0~0.sp2) focal-xena; urgency=medium
+
+  * Non-maintainer upload for patch tracking only.
+  * Add three more patches for the StorPool Cinder driver:
+    - storpool-rm-backup-volume
+    - storpool-cloned-improvements
+    - storpool-clone-image
+
+ -- Peter Pentchev <pp@storpool.com>  Tue, 26 Apr 2022 13:21:29 +0300
+
 cinder (2:19.0.0-0ubuntu2~cloud0+0~0~0.sp1) focal-xena; urgency=medium
 
   * Non-maintainer upload for patch tracking only.
