@@ -22,6 +22,7 @@ import six
 
 from cinder import exception
 from cinder.objects import fields
+from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit import test
@@ -1708,7 +1709,7 @@ class PowerMaxCommonTest(test.TestCase):
     @mock.patch.object(common.PowerMaxCommon, '_get_replication_extra_specs',
                        return_value=tpd.PowerMaxData.rep_extra_specs)
     def test_get_target_wwns_from_masking_view(self, mock_rep_specs, mock_fo):
-        ref_wwns = [self.data.wwnn1]
+        ref_wwns = [self.data.wwpn1]
         for x in range(0, 2):
             target_wwns = self.common._get_target_wwns_from_masking_view(
                 self.data.device_id, self.data.connector['host'],
@@ -2009,6 +2010,65 @@ class PowerMaxCommonTest(test.TestCase):
             model_update = self.common.manage_existing(volume, external_ref)
             self.assertEqual(ref_update, model_update)
 
+    @mock.patch.object(
+        common.PowerMaxCommon, 'get_volume_metadata', return_value='')
+    @mock.patch.object(
+        common.PowerMaxCommon, '_check_lun_valid_for_cinder_management',
+        return_value=('vol1', 'test_sg'))
+    def test_manage_existing_no_fall_through(self, mock_check, mock_get):
+        external_ref = {u'source-name': self.data.device_id}
+        volume = deepcopy(self.data.test_volume)
+        with mock.patch.object(
+                self.common, '_manage_volume_with_uuid',
+                return_value=(
+                    self.data.array, self.data.device_id2)) as mock_uuid:
+            self.common.manage_existing(volume, external_ref)
+            mock_uuid.assert_not_called()
+
+    @mock.patch.object(
+        common.PowerMaxCommon, 'get_volume_metadata', return_value='')
+    @mock.patch.object(
+        common.PowerMaxCommon, '_check_lun_valid_for_cinder_management',
+        return_value=('vol1', 'test_sg'))
+    def test_manage_existing_fall_through(self, mock_check, mock_get):
+        external_ref = {u'source-name': self.data.volume_id}
+        volume = deepcopy(self.data.test_volume)
+        with mock.patch.object(
+                self.common, '_manage_volume_with_uuid',
+                return_value=(
+                    self.data.array, self.data.device_id2)) as mock_uuid:
+            self.common.manage_existing(volume, external_ref)
+            mock_uuid.assert_called()
+
+    @mock.patch.object(rest.PowerMaxRest, 'find_volume_device_id',
+                       return_value=tpd.PowerMaxData.device_id2)
+    def test_manage_volume_with_uuid_success(self, mock_dev):
+        external_ref = {u'source-name': self.data.volume_id}
+        volume = deepcopy(self.data.test_volume)
+        array, device_id = self.common._manage_volume_with_uuid(
+            external_ref, volume)
+        self.assertEqual(array, self.data.array)
+        self.assertEqual(device_id, self.data.device_id2)
+
+    @mock.patch.object(rest.PowerMaxRest, 'find_volume_device_id',
+                       return_value=tpd.PowerMaxData.device_id2)
+    def test_manage_volume_with_prefix_and_uuid_success(self, mock_dev):
+        source_name = 'OS-' + self.data.volume_id
+        external_ref = {u'source-name': source_name}
+        volume = deepcopy(self.data.test_volume)
+        array, device_id = self.common._manage_volume_with_uuid(
+            external_ref, volume)
+        self.assertEqual(array, self.data.array)
+        self.assertEqual(device_id, self.data.device_id2)
+
+    def test_manage_volume_with_uuid_exception(self):
+        external_ref = {u'source-name': u'non_compliant_string'}
+        volume = deepcopy(self.data.test_volume)
+        self.assertRaises(
+            exception.VolumeBackendAPIException,
+            self.common._manage_volume_with_uuid,
+            external_ref, volume)
+
     @mock.patch.object(rest.PowerMaxRest, 'get_volume_list',
                        return_value=[tpd.PowerMaxData.device_id3])
     @mock.patch.object(
@@ -2092,6 +2152,25 @@ class PowerMaxCommonTest(test.TestCase):
         size = self.common.manage_existing_get_size(
             self.data.test_volume, external_ref)
         self.assertEqual(2, size)
+
+    def test_manage_existing_get_size_uuid(self):
+        external_ref = {u'source-name': self.data.volume_id}
+        size = self.common.manage_existing_get_size(
+            self.data.test_volume, external_ref)
+        self.assertEqual(2, size)
+
+    def test_manage_existing_get_size_prefix_and_uuid(self):
+        source_name = 'volume-' + self.data.volume_id
+        external_ref = {u'source-name': source_name}
+        size = self.common.manage_existing_get_size(
+            self.data.test_volume, external_ref)
+        self.assertEqual(2, size)
+
+    def test_manage_existing_get_size_invalid_input(self):
+        external_ref = {u'source-name': u'invalid_input'}
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.common.manage_existing_get_size,
+                          self.data.test_volume, external_ref)
 
     def test_manage_existing_get_size_exception(self):
         external_ref = {u'source-name': u'00001'}
@@ -2632,6 +2711,23 @@ class PowerMaxCommonTest(test.TestCase):
         self.common.promotion = False
         self.assertEqual(ref_return, return_val)
 
+    @mock.patch.object(
+        rest.PowerMaxRest, 'get_storage_groups_from_volume',
+        return_value=tpd.PowerMaxData.default_sg_re_managed_list)
+    def test_is_valid_for_storage_assisted_migration_rep_with_mgmt_group(
+            self, mock_sg_list):
+        device_id = self.data.device_id
+        host = {'host': self.data.fake_host}
+        volume_name = self.data.test_volume.name
+        ref_return = (True, 'Diamond', 'NONE')
+        with mock.patch.object(self.rest, 'is_next_gen_array',
+                               return_value=True):
+            return_val = self.common._is_valid_for_storage_assisted_migration(
+                device_id, host, self.data.array,
+                self.data.srp, volume_name, False, False, self.data.slo,
+                self.data.workload, False)
+            self.assertEqual(ref_return, return_val)
+
     def test_find_volume_group(self):
         group = self.data.test_group_1
         array = self.data.array
@@ -2774,11 +2870,13 @@ class PowerMaxCommonTest(test.TestCase):
                                                    snapshots))
             self.assertEqual(ref_model_update, model_update)
 
-    def test_delete_group_snapshot_failed(self):
-        group_snapshot = self.data.test_group_snapshot_failed
+    @mock.patch.object(common.PowerMaxCommon, '_find_volume_group',
+                       return_value=None)
+    def test_delete_group_snapshot_not_on_array(self, mock_gvg):
+        group_snapshot = self.data.test_group_snapshot_1
         snapshots = []
         ref_model_update = (
-            {'status': fields.GroupSnapshotStatus.ERROR_DELETING})
+            {'status': fields.GroupSnapshotStatus.DELETED})
         with mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type',
                                return_value=True):
             model_update, snapshots_model_update = (
@@ -3255,6 +3353,56 @@ class PowerMaxCommonTest(test.TestCase):
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.common.manage_existing_snapshot,
                           snapshot, existing_ref)
+
+    @mock.patch.object(rest.PowerMaxRest, 'get_volume_snaps',
+                       return_value=[{'snap_name': 'snap_name',
+                                      'snap_id': tpd.PowerMaxData.snap_id}])
+    def test_get_snap_id_with_uuid_success(self, mock_get_snaps):
+        snap_uuid = '_snapshot-' + fake.SNAPSHOT_ID
+        snap_id, snap_name = self.common._get_snap_id_with_uuid(
+            self.data.array, self.data.device_id, snap_uuid)
+        self.assertEqual(self.data.snap_id, snap_id)
+        self.assertEqual('253b28496ec7aab', snap_name)
+        snap_uuid = fake.SNAPSHOT_ID
+        snap_id, snap_name = self.common._get_snap_id_with_uuid(
+            self.data.array, self.data.device_id, snap_uuid)
+        self.assertEqual(self.data.snap_id, snap_id)
+        self.assertEqual('253b28496ec7aab', snap_name)
+
+    @mock.patch.object(
+        common.PowerMaxCommon, 'get_snapshot_metadata',
+        return_value={'snap-meta-key-1': 'snap-meta-value-1',
+                      'snap-meta-key-2': 'snap-meta-value-2'})
+    @mock.patch.object(
+        rest.PowerMaxRest, 'get_volume_snaps',
+        return_value=[{'snap_name': tpd.PowerMaxData.test_snapshot_snap_name,
+                       'snap_id': tpd.PowerMaxData.snap_id}])
+    def test_manage_existing_snapshot_no_fall_through(
+            self, mock_get_snaps, mock_meta):
+        external_ref = {u'source-name': u'test_snap'}
+        snapshot = deepcopy(self.data.test_snapshot)
+        with mock.patch.object(
+                self.common, '_get_snap_id_with_uuid',
+                return_value=(
+                    self.data.snap_id,
+                    self.data.test_snapshot_snap_name)) as mock_uuid:
+            self.common.manage_existing_snapshot(snapshot, external_ref)
+            mock_uuid.assert_not_called()
+
+    @mock.patch.object(
+        common.PowerMaxCommon, 'get_snapshot_metadata',
+        return_value={'snap-meta-key-1': 'snap-meta-value-1',
+                      'snap-meta-key-2': 'snap-meta-value-2'})
+    def test_manage_existing_snapshot_fall_through(self, mock_meta):
+        external_ref = {u'source-name': fake.SNAPSHOT_ID}
+        snapshot = deepcopy(self.data.test_snapshot)
+        with mock.patch.object(
+                self.common, '_get_snap_id_with_uuid',
+                return_value=(
+                    self.data.snap_id,
+                    self.data.test_snapshot_snap_name)) as mock_uuid:
+            self.common.manage_existing_snapshot(snapshot, external_ref)
+            mock_uuid.assert_called()
 
     @mock.patch.object(rest.PowerMaxRest, 'modify_volume_snap')
     def test_unmanage_snapshot_success(self, mock_mod, ):
@@ -4142,6 +4290,61 @@ class PowerMaxCommonTest(test.TestCase):
         self.assertTrue(success)
 
     @mock.patch.object(
+        utils.PowerMaxUtils, 'get_port_name_label',
+        return_value='my_pg')
+    @mock.patch.object(
+        utils.PowerMaxUtils, 'get_volume_attached_hostname',
+        return_value='HostX')
+    @mock.patch.object(
+        rest.PowerMaxRest, 'is_volume_in_storagegroup', return_value=True)
+    @mock.patch.object(
+        masking.PowerMaxMasking, 'return_volume_to_volume_group')
+    @mock.patch.object(
+        masking.PowerMaxMasking, 'move_volume_between_storage_groups')
+    @mock.patch.object(
+        masking.PowerMaxMasking, 'add_child_sg_to_parent_sg')
+    @mock.patch.object(
+        provision.PowerMaxProvision, 'create_storage_group')
+    @mock.patch.object(
+        rest.PowerMaxRest, 'get_storage_group',
+        side_effect=[None, tpd.PowerMaxData.volume_info_dict])
+    @mock.patch.object(
+        rest.PowerMaxRest, 'get_volume',
+        return_value=tpd.PowerMaxData.volume_details[0])
+    @mock.patch.object(
+        utils.PowerMaxUtils, 'get_rdf_management_group_name',
+        return_value=tpd.PowerMaxData.rdf_managed_async_grp)
+    def test_retype_volume_attached_metro(
+            self, mck_get_rdf, mck_get_vol, mck_get_sg, mck_create, mck_add,
+            mck_move_vol, mck_return_vol, mck_is_vol, mck_host, mck_pg):
+
+        array = self.data.array
+        srp = self.data.srp
+        device_id = self.data.device_id
+        volume = self.data.test_attached_volume
+        volume_name = self.data.volume_id
+        extra_specs = self.data.rep_extra_specs_rep_config_metro
+        target_slo = self.data.slo_silver
+        target_workload = self.data.workload
+        target_extra_specs = deepcopy(self.data.rep_extra_specs)
+        target_extra_specs[utils.DISABLECOMPRESSION] = False
+        target_extra_specs[utils.REP_CONFIG] = self.data.rep_config_sync
+
+        success, target_sg_name = self.common._retype_volume(
+            array, srp, device_id, volume, volume_name, extra_specs,
+            target_slo, target_workload, target_extra_specs, remote=True,
+            metro_attach=True)
+        mck_get_rdf.assert_called_once()
+        mck_get_vol.assert_called_once()
+        mck_create.assert_called_once()
+        mck_add.assert_called_once()
+        mck_move_vol.assert_called_once()
+        mck_return_vol.assert_called_once()
+        mck_is_vol.assert_called_once()
+        self.assertEqual(2, mck_get_sg.call_count)
+        self.assertTrue(success)
+
+    @mock.patch.object(
         utils.PowerMaxUtils, 'get_volume_attached_hostname', return_value=None)
     @mock.patch.object(
         rest.PowerMaxRest, 'get_volume',
@@ -4157,7 +4360,8 @@ class PowerMaxCommonTest(test.TestCase):
         device_id = self.data.device_id
         volume = self.data.test_attached_volume
         volume_name = self.data.volume_id
-        extra_specs = self.data.rep_extra_specs_rep_config
+        extra_specs = deepcopy(self.data.rep_extra_specs_rep_config)
+        extra_specs[utils.PORTGROUPNAME] = self.data.port_group_name_f
         target_slo = self.data.slo_silver
         target_workload = self.data.workload
         target_extra_specs = deepcopy(self.data.rep_extra_specs)
@@ -4445,3 +4649,45 @@ class PowerMaxCommonTest(test.TestCase):
         array = self.data.array
         self.common._delete_temp_snapshot(session, array)
         mck_delete.assert_not_called()
+
+    def test_get_replication_flags(self):
+        rf = self.common._get_replication_flags(
+            self.data.extra_specs, self.data.rep_extra_specs)
+        self.assertFalse(rf.was_rep_enabled)
+        self.assertTrue(rf.is_rep_enabled)
+        self.assertFalse(rf.backend_ids_differ)
+        self.assertEqual('Synchronous', rf.rep_mode)
+        self.assertEqual('Diamond', rf.target_extra_specs.get('slo'))
+
+    @mock.patch.object(
+        common.PowerMaxCommon, 'configure_volume_replication',
+        return_value=('first_vol_in_rdf_group', True,
+                      tpd.PowerMaxData.rep_info_dict,
+                      tpd.PowerMaxData.rep_extra_specs_mgmt, False))
+    def test_prep_non_rep_to_rep(self, mck_vol_rep):
+        volume = fake_volume.fake_volume_obj(
+            context='cxt', provider_location=None)
+        nrr = self.common._prep_non_rep_to_rep(
+            self.data.array, self.data.device_id, volume, False,
+            True, False, self.data.rep_extra_specs_rep_config)
+        self.assertIsInstance(nrr.model_update, dict)
+        self.assertFalse(nrr.rdf_pair_created)
+        self.assertIsInstance(nrr.rep_extra_specs, dict)
+        self.assertIsInstance(nrr.rep_info_dict, dict)
+        self.assertFalse(nrr.resume_target_sg)
+        self.assertEqual('first_vol_in_rdf_group', nrr.rep_status)
+
+    @mock.patch.object(
+        common.PowerMaxCommon, 'break_rdf_device_pair_session',
+        return_value=(tpd.PowerMaxData.rep_extra_specs_mgmt, True))
+    def test_prep_rep_to_non_rep(self, mock_break):
+        volume = fake_volume.fake_volume_obj(
+            context='cxt', provider_location=None)
+        rnr = self.common._prep_rep_to_non_rep(
+            self.data.array, self.data.device_id, 'my_vol', volume, True,
+            False, False, self.data.extra_specs)
+        self.assertIsInstance(rnr.model_update, dict)
+        self.assertIsInstance(rnr.resume_original_sg_dict, dict)
+        self.assertTrue(rnr.rdf_pair_broken)
+        self.assertTrue(rnr.resume_original_sg)
+        self.assertFalse(rnr.is_partitioned)

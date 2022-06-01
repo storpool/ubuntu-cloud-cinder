@@ -23,6 +23,7 @@ from collections import abc
 import contextlib
 import datetime as dt
 import functools
+import inspect
 import itertools
 import re
 import sys
@@ -63,6 +64,9 @@ from cinder.volume import volume_utils
 
 CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
+# Map with cases where attach status differs from volume status
+ATTACH_STATUS_MAP = {'attached': 'in-use', 'detached': 'available'}
+
 
 options.set_defaults(CONF, connection='sqlite:///$state_path/cinder.sqlite')
 
@@ -162,6 +166,7 @@ def require_admin_context(f):
         if not is_admin_context(args[0]):
             raise exception.AdminRequired()
         return f(*args, **kwargs)
+    wrapper.__signature__ = inspect.signature(f)
     return wrapper
 
 
@@ -180,6 +185,7 @@ def require_context(f):
         if not is_admin_context(args[0]) and not is_user_context(args[0]):
             raise exception.NotAuthorized()
         return f(*args, **kwargs)
+    wrapper.__signature__ = inspect.signature(f)
     return wrapper
 
 
@@ -357,6 +363,222 @@ QUOTA_SYNC_FUNCTIONS = {
     '_sync_backup_gigabytes': _sync_backup_gigabytes,
     '_sync_groups': _sync_groups,
 }
+
+
+###################
+
+
+@require_context
+def resource_exists(context, model, resource_id, session=None):
+    conditions = [model.id == resource_id]
+    # Match non deleted resources by the id
+    if 'no' == context.read_deleted:
+        conditions.append(~model.deleted)
+    # If the context is not admin we limit it to the context's project
+    if is_user_context(context) and hasattr(model, 'project_id'):
+        conditions.append(model.project_id == context.project_id)
+    session = session or get_session()
+    query = session.query(sql.exists().where(and_(*conditions)))
+    return query.scalar()
+
+
+def get_model_for_versioned_object(versioned_object):
+    if isinstance(versioned_object, str):
+        model_name = versioned_object
+    else:
+        model_name = versioned_object.obj_name()
+    if model_name == 'BackupImport':
+        return models.Backup
+    return getattr(models, model_name)
+
+
+def _get_get_method(model):
+    # Exceptions to model to get methods, in general method names are a simple
+    # conversion changing ORM name from camel case to snake format and adding
+    # _get to the string
+    GET_EXCEPTIONS = {
+        models.ConsistencyGroup: consistencygroup_get,
+        models.VolumeType: _volume_type_get_full,
+        models.QualityOfServiceSpecs: qos_specs_get,
+        models.GroupType: _group_type_get_full,
+        models.CGSnapshot: cgsnapshot_get,
+    }
+
+    if model in GET_EXCEPTIONS:
+        return GET_EXCEPTIONS[model]
+
+    # General conversion
+    # Convert camel cased model name to snake format
+    s = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', model.__name__)
+    # Get method must be snake formatted model name concatenated with _get
+    method_name = re.sub('([a-z0-9])([A-Z])', r'\1_\2', s).lower() + '_get'
+    return globals().get(method_name)
+
+
+_GET_METHODS = {}
+
+
+@require_context
+def get_by_id(context, model, id, *args, **kwargs):
+    # Add get method to cache dictionary if it's not already there
+    if not _GET_METHODS.get(model):
+        _GET_METHODS[model] = _get_get_method(model)
+
+    return _GET_METHODS[model](context, id, *args, **kwargs)
+
+
+def condition_db_filter(model, field, value):
+    """Create matching filter.
+
+    If value is an iterable other than a string, any of the values is
+    a valid match (OR), so we'll use SQL IN operator.
+
+    If it's not an iterator == operator will be used.
+    """
+    orm_field = getattr(model, field)
+    # For values that must match and are iterables we use IN
+    if (isinstance(value, abc.Iterable) and
+            not isinstance(value, str)):
+        # We cannot use in_ when one of the values is None
+        if None not in value:
+            return orm_field.in_(value)
+
+        return or_(orm_field == v for v in value)
+
+    # For values that must match and are not iterables we use ==
+    return orm_field == value
+
+
+def condition_not_db_filter(model, field, value, auto_none=True):
+    """Create non matching filter.
+
+    If value is an iterable other than a string, any of the values is
+    a valid match (OR), so we'll use SQL IN operator.
+
+    If it's not an iterator == operator will be used.
+
+    If auto_none is True then we'll consider NULL values as different as well,
+    like we do in Python and not like SQL does.
+    """
+    result = ~condition_db_filter(model, field, value)
+
+    if (auto_none
+            and ((isinstance(value, abc.Iterable) and
+                  not isinstance(value, str)
+                  and None not in value)
+                 or (value is not None))):
+        orm_field = getattr(model, field)
+        result = or_(result, orm_field.is_(None))
+
+    return result
+
+
+def is_orm_value(obj):
+    """Check if object is an ORM field or expression."""
+    return isinstance(obj, (sqlalchemy.orm.attributes.InstrumentedAttribute,
+                            sqlalchemy.sql.expression.ColumnElement))
+
+
+def _check_is_not_multitable(values, model):
+    """Check that we don't try to do multitable updates.
+
+    Since PostgreSQL doesn't support multitable updates we want to always fail
+    if we have such a query in our code, even if with MySQL it would work.
+    """
+    used_models = set()
+    for field in values:
+        if isinstance(field, sqlalchemy.orm.attributes.InstrumentedAttribute):
+            used_models.add(field.class_)
+        elif isinstance(field, str):
+            used_models.add(model)
+        else:
+            raise exception.ProgrammingError(
+                reason='DB Conditional update - Unknown field type, must be '
+                       'string or ORM field.')
+        if len(used_models) > 1:
+            raise exception.ProgrammingError(
+                reason='DB Conditional update - Error in query, multitable '
+                       'updates are not supported.')
+
+
+@require_context
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
+def conditional_update(context, model, values, expected_values, filters=(),
+                       include_deleted='no', project_only=False, order=None):
+    """Compare-and-swap conditional update SQLAlchemy implementation."""
+    _check_is_not_multitable(values, model)
+
+    # Provided filters will become part of the where clause
+    where_conds = list(filters)
+
+    # Build where conditions with operators ==, !=, NOT IN and IN
+    for field, condition in expected_values.items():
+        if not isinstance(condition, db.Condition):
+            condition = db.Condition(condition, field)
+        where_conds.append(condition.get_filter(model, field))
+
+    # Create the query with the where clause
+    query = model_query(context, model, read_deleted=include_deleted,
+                        project_only=project_only).filter(*where_conds)
+
+    # NOTE(geguileo): Some DBs' update method are order dependent, and they
+    # behave differently depending on the order of the values, example on a
+    # volume with 'available' status:
+    #    UPDATE volumes SET previous_status=status, status='reyping'
+    #        WHERE id='44f284f9-877d-4fce-9eb4-67a052410054';
+    # Will result in a volume with 'retyping' status and 'available'
+    # previous_status both on SQLite and MariaDB, but
+    #    UPDATE volumes SET status='retyping', previous_status=status
+    #        WHERE id='44f284f9-877d-4fce-9eb4-67a052410054';
+    # Will yield the same result in SQLite but will result in a volume with
+    # status and previous_status set to 'retyping' in MariaDB, which is not
+    # what we want, so order must be taken into consideration.
+    # Order for the update will be:
+    #  1- Order specified in argument order
+    #  2- Values that refer to other ORM field (simple and using operations,
+    #     like size + 10)
+    #  3- Values that use Case clause (since they may be using fields as well)
+    #  4- All other values
+    order = list(order) if order else tuple()
+    orm_field_list = []
+    case_list = []
+    unordered_list = []
+    for key, value in values.items():
+        if isinstance(value, db.Case):
+            # TODO: This uses deprecated whens kwarg, so once our minimum
+            # version of SQLA is 1.4 replace with: value = case(*value.whens,
+            value = case(whens=value.whens,
+                         value=value.value,
+                         else_=value.else_)
+
+        if key in order:
+            # pylint: disable=E1137; ("order" is known to be a list, here)
+            order[order.index(key)] = (key, value)
+            continue
+        # NOTE(geguileo): Check Case first since it's a type of orm value
+        if isinstance(value, sql.elements.Case):
+            value_list = case_list
+        elif is_orm_value(value):
+            value_list = orm_field_list
+        else:
+            value_list = unordered_list
+        value_list.append((key, value))
+
+    update_args = {'synchronize_session': False}
+
+    # If we don't have to enforce any kind of order just pass along the values
+    # dictionary since it will be a little more efficient.
+    if order or orm_field_list or case_list:
+        # If we are doing an update with ordered parameters, we need to add
+        # remaining values to the list
+        values = itertools.chain(order, orm_field_list, case_list,
+                                 unordered_list)
+        # And we have to tell SQLAlchemy that we want to preserve the order
+        update_args['update_args'] = {'preserve_parameter_order': True}
+
+    # Return True if we were able to change any DB entry, False otherwise
+    result = query.update(values, **update_args)
+    return 0 != result
 
 
 ###################
@@ -1644,11 +1866,14 @@ def volume_data_get_for_project(context, project_id, host=None):
                                         skip_internal=False)
 
 
-VOLUME_DEPENDENT_MODELS = frozenset([models.VolumeMetadata,
-                                     models.VolumeAdminMetadata,
-                                     models.Transfer,
-                                     models.VolumeGlanceMetadata,
-                                     models.VolumeAttachment])
+VOLUME_DEPENDENT_MODELS = frozenset([
+    models.VolumeMetadata,
+    models.VolumeAdminMetadata,
+    models.Snapshot,
+    models.Transfer,
+    models.VolumeGlanceMetadata,
+    models.VolumeAttachment,
+])
 
 
 @require_admin_context
@@ -1727,74 +1952,83 @@ def volume_include_in_cluster(context, cluster, partial_rename=True,
                                partial_rename, filters)
 
 
+def _get_statuses_from_attachments(context, session, volume_id):
+    """Get volume status and attach_status based on existing attachments."""
+    # NOTE: Current implementation ignores attachments on error attaching,
+    # since they will not have been used by any consumer because os-brick's
+    # connect_volume has not been called yet. This leads to cases where a
+    # volume will be in 'available' state yet have attachments.
+
+    # If we sort status of attachments alphabetically, ignoring errors, the
+    # first element will be the attachment status for the volume:
+    #     attached > attaching > detaching > reserved
+    attach_status = session.query(models.VolumeAttachment.attach_status).\
+        filter_by(deleted=False).\
+        filter_by(volume_id=volume_id).\
+        filter(~models.VolumeAttachment.attach_status.startswith('error_')).\
+        order_by(models.VolumeAttachment.attach_status.asc()).\
+        limit(1).\
+        scalar()
+
+    # No volume attachment records means the volume is detached.
+    attach_status = attach_status or 'detached'
+
+    # Check cases where volume status is different from attach status, and
+    # default to the same value if it's not one of those cases.
+    status = ATTACH_STATUS_MAP.get(attach_status, attach_status)
+
+    return (status, attach_status)
+
+
 @require_admin_context
 def volume_detached(context, volume_id, attachment_id):
-    """This updates a volume attachment and marks it as detached.
+    """Delete an attachment and update the volume accordingly.
 
-    This method also ensures that the volume entry is correctly
-    marked as either still attached/in-use or detached/available
-    if this was the last detachment made.
+    After marking the attachment as detached the method will decide the status
+    and attach_status values for the volume based on the current status and the
+    remaining attachments and their status.
 
+    Volume status may be changed to: in-use, attaching, detaching, reserved, or
+    available.
+
+    Volume attach_status will be changed to one of: attached, attaching,
+    detaching, reserved, or detached.
     """
 
     # NOTE(jdg): This is a funky band-aid for the earlier attempts at
     # multiattach, it's a bummer because these things aren't really being used
     # but at the same time we don't want to break them until we work out the
     # new proposal for multi-attach
-    remain_attachment = True
     session = get_session()
     with session.begin():
+        # Only load basic volume info necessary to check various status and use
+        # the volume row as a lock with the for_update.
+        volume = _volume_get(context, volume_id, session=session,
+                             joined_load=False, for_update=True)
+
         try:
             attachment = _attachment_get(context, attachment_id,
                                          session=session)
+            attachment_updates = attachment.delete(session)
         except exception.VolumeAttachmentNotFound:
             attachment_updates = None
-            attachment = None
 
-        if attachment:
-            now = timeutils.utcnow()
-            attachment_updates = {
-                'attach_status': fields.VolumeAttachStatus.DETACHED,
-                'detach_time': now,
-                'deleted': True,
-                'deleted_at': now,
-                'updated_at': attachment.updated_at,
-            }
-            attachment.update(attachment_updates)
-            attachment.save(session=session)
-            del attachment_updates['updated_at']
+        status, attach_status = _get_statuses_from_attachments(context,
+                                                               session,
+                                                               volume_id)
 
-        attachment_list = None
-        volume_ref = _volume_get(context, volume_id,
-                                 session=session)
-        volume_updates = {'updated_at': volume_ref.updated_at}
-        if not volume_ref.volume_attachment:
-            # NOTE(jdg): We kept the old arg style allowing session exclusively
-            # for this one call
-            attachment_list = volume_attachment_get_all_by_volume_id(
-                context, volume_id, session=session)
-            remain_attachment = False
-        if attachment_list and len(attachment_list) > 0:
-            remain_attachment = True
+        volume_updates = {'updated_at': volume.updated_at,
+                          'attach_status': attach_status}
 
-        if not remain_attachment:
-            # Hide status update from user if we're performing volume migration
-            # or uploading it to image
-            if ((not volume_ref.migration_status and
-                    not (volume_ref.status == 'uploading')) or
-                    volume_ref.migration_status in ('success', 'error')):
-                volume_updates['status'] = 'available'
+        # Hide volume status update to available on volume migration or upload,
+        # as status is updated later on those flows.
+        if ((attach_status != 'detached')
+            or (not volume.migration_status and volume.status != 'uploading')
+                or volume.migration_status in ('success', 'error')):
+            volume_updates['status'] = status
 
-            volume_updates['attach_status'] = (
-                fields.VolumeAttachStatus.DETACHED)
-        else:
-            # Volume is still attached
-            volume_updates['status'] = 'in-use'
-            volume_updates['attach_status'] = (
-                fields.VolumeAttachStatus.ATTACHED)
-
-        volume_ref.update(volume_updates)
-        volume_ref.save(session=session)
+        volume.update(volume_updates)
+        volume.save(session=session)
         del volume_updates['updated_at']
         return (volume_updates, attachment_updates)
 
@@ -1878,11 +2112,14 @@ def _volume_get_query(context, session=None, project_only=False,
 
 
 @require_context
-def _volume_get(context, volume_id, session=None, joined_load=True):
+def _volume_get(context, volume_id, session=None, joined_load=True,
+                for_update=False):
     result = _volume_get_query(context, session=session, project_only=True,
                                joined_load=joined_load)
     if joined_load:
         result = result.options(joinedload('volume_type.extra_specs'))
+    if for_update:
+        result = result.with_for_update()
     result = result.filter_by(id=volume_id).first()
 
     if not result:
@@ -7176,219 +7413,6 @@ def worker_destroy(context, **filters):
 
 
 ###############################
-
-
-@require_context
-def resource_exists(context, model, resource_id, session=None):
-    conditions = [model.id == resource_id]
-    # Match non deleted resources by the id
-    if 'no' == context.read_deleted:
-        conditions.append(~model.deleted)
-    # If the context is not admin we limit it to the context's project
-    if is_user_context(context) and hasattr(model, 'project_id'):
-        conditions.append(model.project_id == context.project_id)
-    session = session or get_session()
-    query = session.query(sql.exists().where(and_(*conditions)))
-    return query.scalar()
-
-
-def get_model_for_versioned_object(versioned_object):
-    if isinstance(versioned_object, str):
-        model_name = versioned_object
-    else:
-        model_name = versioned_object.obj_name()
-    if model_name == 'BackupImport':
-        return models.Backup
-    return getattr(models, model_name)
-
-
-def _get_get_method(model):
-    # Exceptions to model to get methods, in general method names are a simple
-    # conversion changing ORM name from camel case to snake format and adding
-    # _get to the string
-    GET_EXCEPTIONS = {
-        models.ConsistencyGroup: consistencygroup_get,
-        models.VolumeType: _volume_type_get_full,
-        models.QualityOfServiceSpecs: qos_specs_get,
-        models.GroupType: _group_type_get_full,
-        models.CGSnapshot: cgsnapshot_get,
-    }
-
-    if model in GET_EXCEPTIONS:
-        return GET_EXCEPTIONS[model]
-
-    # General conversion
-    # Convert camel cased model name to snake format
-    s = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', model.__name__)
-    # Get method must be snake formatted model name concatenated with _get
-    method_name = re.sub('([a-z0-9])([A-Z])', r'\1_\2', s).lower() + '_get'
-    return globals().get(method_name)
-
-
-_GET_METHODS = {}
-
-
-@require_context
-def get_by_id(context, model, id, *args, **kwargs):
-    # Add get method to cache dictionary if it's not already there
-    if not _GET_METHODS.get(model):
-        _GET_METHODS[model] = _get_get_method(model)
-
-    return _GET_METHODS[model](context, id, *args, **kwargs)
-
-
-def condition_db_filter(model, field, value):
-    """Create matching filter.
-
-    If value is an iterable other than a string, any of the values is
-    a valid match (OR), so we'll use SQL IN operator.
-
-    If it's not an iterator == operator will be used.
-    """
-    orm_field = getattr(model, field)
-    # For values that must match and are iterables we use IN
-    if (isinstance(value, abc.Iterable) and
-            not isinstance(value, str)):
-        # We cannot use in_ when one of the values is None
-        if None not in value:
-            return orm_field.in_(value)
-
-        return or_(orm_field == v for v in value)
-
-    # For values that must match and are not iterables we use ==
-    return orm_field == value
-
-
-def condition_not_db_filter(model, field, value, auto_none=True):
-    """Create non matching filter.
-
-    If value is an iterable other than a string, any of the values is
-    a valid match (OR), so we'll use SQL IN operator.
-
-    If it's not an iterator == operator will be used.
-
-    If auto_none is True then we'll consider NULL values as different as well,
-    like we do in Python and not like SQL does.
-    """
-    result = ~condition_db_filter(model, field, value)
-
-    if (auto_none
-            and ((isinstance(value, abc.Iterable) and
-                  not isinstance(value, str)
-                  and None not in value)
-                 or (value is not None))):
-        orm_field = getattr(model, field)
-        result = or_(result, orm_field.is_(None))
-
-    return result
-
-
-def is_orm_value(obj):
-    """Check if object is an ORM field or expression."""
-    return isinstance(obj, (sqlalchemy.orm.attributes.InstrumentedAttribute,
-                            sqlalchemy.sql.expression.ColumnElement))
-
-
-def _check_is_not_multitable(values, model):
-    """Check that we don't try to do multitable updates.
-
-    Since PostgreSQL doesn't support multitable updates we want to always fail
-    if we have such a query in our code, even if with MySQL it would work.
-    """
-    used_models = set()
-    for field in values:
-        if isinstance(field, sqlalchemy.orm.attributes.InstrumentedAttribute):
-            used_models.add(field.class_)
-        elif isinstance(field, str):
-            used_models.add(model)
-        else:
-            raise exception.ProgrammingError(
-                reason='DB Conditional update - Unknown field type, must be '
-                       'string or ORM field.')
-        if len(used_models) > 1:
-            raise exception.ProgrammingError(
-                reason='DB Conditional update - Error in query, multitable '
-                       'updates are not supported.')
-
-
-@require_context
-@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
-def conditional_update(context, model, values, expected_values, filters=(),
-                       include_deleted='no', project_only=False, order=None):
-    """Compare-and-swap conditional update SQLAlchemy implementation."""
-    _check_is_not_multitable(values, model)
-
-    # Provided filters will become part of the where clause
-    where_conds = list(filters)
-
-    # Build where conditions with operators ==, !=, NOT IN and IN
-    for field, condition in expected_values.items():
-        if not isinstance(condition, db.Condition):
-            condition = db.Condition(condition, field)
-        where_conds.append(condition.get_filter(model, field))
-
-    # Create the query with the where clause
-    query = model_query(context, model, read_deleted=include_deleted,
-                        project_only=project_only).filter(*where_conds)
-
-    # NOTE(geguileo): Some DBs' update method are order dependent, and they
-    # behave differently depending on the order of the values, example on a
-    # volume with 'available' status:
-    #    UPDATE volumes SET previous_status=status, status='reyping'
-    #        WHERE id='44f284f9-877d-4fce-9eb4-67a052410054';
-    # Will result in a volume with 'retyping' status and 'available'
-    # previous_status both on SQLite and MariaDB, but
-    #    UPDATE volumes SET status='retyping', previous_status=status
-    #        WHERE id='44f284f9-877d-4fce-9eb4-67a052410054';
-    # Will yield the same result in SQLite but will result in a volume with
-    # status and previous_status set to 'retyping' in MariaDB, which is not
-    # what we want, so order must be taken into consideration.
-    # Order for the update will be:
-    #  1- Order specified in argument order
-    #  2- Values that refer to other ORM field (simple and using operations,
-    #     like size + 10)
-    #  3- Values that use Case clause (since they may be using fields as well)
-    #  4- All other values
-    order = list(order) if order else tuple()
-    orm_field_list = []
-    case_list = []
-    unordered_list = []
-    for key, value in values.items():
-        if isinstance(value, db.Case):
-            # TODO: This uses deprecated whens kwarg, so once our minimum
-            # version of SQLA is 1.4 replace with: value = case(*value.whens,
-            value = case(whens=value.whens,
-                         value=value.value,
-                         else_=value.else_)
-
-        if key in order:
-            # pylint: disable=E1137; ("order" is known to be a list, here)
-            order[order.index(key)] = (key, value)
-            continue
-        # NOTE(geguileo): Check Case first since it's a type of orm value
-        if isinstance(value, sql.elements.Case):
-            value_list = case_list
-        elif is_orm_value(value):
-            value_list = orm_field_list
-        else:
-            value_list = unordered_list
-        value_list.append((key, value))
-
-    update_args = {'synchronize_session': False}
-
-    # If we don't have to enforce any kind of order just pass along the values
-    # dictionary since it will be a little more efficient.
-    if order or orm_field_list or case_list:
-        # If we are doing an update with ordered parameters, we need to add
-        # remaining values to the list
-        values = itertools.chain(order, orm_field_list, case_list,
-                                 unordered_list)
-        # And we have to tell SQLAlchemy that we want to preserve the order
-        update_args['update_args'] = {'preserve_parameter_order': True}
-
-    # Return True if we were able to change any DB entry, False otherwise
-    result = query.update(values, **update_args)
-    return 0 != result
 
 
 # TODO: (Y Release) remove method and this comment
