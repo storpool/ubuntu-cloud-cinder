@@ -1,11 +1,38 @@
 CHANGES
 =======
 
+19.1.0
+------
+
+* Doc: Typos in Spectrum Virtulize family user guide
+* Doc: IBM flashsystem driver update
+* [stable-only] Specify openstacksdk stable branch
+* Fix: Race between attachment and volume deletion
+* Expose volume\_attachments in Volume OVO
+* Delete attachment on remove\_export failure
+* Fix detach notification
+* Volume transfers: Remove duplicate policy check
+* Reject bad img formats for uploaded encrypted vols
+* NetApp ONTAP: Fix sub-clone zapi call
+* [stable-xena-only] update xena personas doc
+* Dell PowerVault: Fix "cinder manageable-list"
+* Seagate driver: fix get\_volume\_size()
+* Fixed copy-on-write mode in GPFS NFS driver
+* [Pure Storage] Add check for NVMe-FC capable array
+* RBD: Open RBD images read-only where possible
+* PowerMax Driver - Fix for legacy PowerMax OS around generations
+* [Pure Storage] Add missing DB values when performing create CG from CG snap
+* Fix typo in message policy deprecations
+* PowerMax Docs - Xena release notes
+
 19.0.0
 ------
 
 * Use os-brick 5.0.1
 * Add "known issues" to xena release note
+* PowerMax Driver - Fix for GVG snapshot delete
+* PowerMax Driver - Port load balancing fix
+* Dell PowerVault driver: Fix documentation typos
 * Add warning about qcow2 version 2 format images
 * Fix cinder-manage db version
 * fixtures: Don't persist state in the Database fixture
