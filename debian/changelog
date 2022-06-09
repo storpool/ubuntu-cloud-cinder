@@ -1,3 +1,15 @@
+cinder (2:20.0.0-0ubuntu1~cloud0+0~0~0.sp1) focal-yoga; urgency=medium
+
+  * Non-maintainer upload for patch tracking only.
+  * Add some patches to the StorPool driver:
+    - storpool-drop-attach-detach
+    - storpool-drop-backup-volume
+    - storpool-cloned-volume
+    - storpool-clone-image
+    - storpool-iscsi
+
+ -- Peter Pentchev <pp@storpool.com>  Wed, 01 Jun 2022 10:23:04 +0300
+
 cinder (2:20.0.0-0ubuntu1~cloud0) focal-yoga; urgency=medium
 
   * New upstream release for the Ubuntu Cloud Archive.
