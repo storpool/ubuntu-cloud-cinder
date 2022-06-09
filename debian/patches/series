@@ -8,3 +8,4 @@ storpool-cloned-volume.patch
 storpool-clone-image.patch
 storpool-iscsi.patch
 manager-glance-store.patch
+manager-default-glance-store.patch

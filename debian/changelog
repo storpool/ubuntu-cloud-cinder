@@ -1,3 +1,11 @@
+cinder (2:20.0.0-0ubuntu1~cloud0+0~0~0.sp3) focal-yoga; urgency=medium
+
+  * Non-maintainer upload for patch tracking only.
+  * Hardcode a "main" Glance store when uploading an image if none is
+    specified in the volume type's extra specs.
+
+ -- Peter Pentchev <pp@storpool.com>  Thu, 09 Jun 2022 13:13:53 +0300
+
 cinder (2:20.0.0-0ubuntu1~cloud0+0~0~0.sp2) focal-yoga; urgency=medium
 
   * Non-maintainer upload for patch tracking only.
