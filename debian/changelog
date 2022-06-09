@@ -1,3 +1,11 @@
+cinder (2:20.0.0-0ubuntu1~cloud0+0~0~0.sp2) focal-yoga; urgency=medium
+
+  * Non-maintainer upload for patch tracking only.
+  * Add the manager-glance-store patch to fix uploading a volume to
+    a Glance image when Glance is configured with multiple backends.
+
+ -- Peter Pentchev <pp@storpool.com>  Thu, 09 Jun 2022 11:47:55 +0300
+
 cinder (2:20.0.0-0ubuntu1~cloud0+0~0~0.sp1) focal-yoga; urgency=medium
 
   * Non-maintainer upload for patch tracking only.

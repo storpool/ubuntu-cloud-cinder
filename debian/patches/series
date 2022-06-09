@@ -7,3 +7,4 @@ storpool-drop-backup-volume.patch
 storpool-cloned-volume.patch
 storpool-clone-image.patch
 storpool-iscsi.patch
+manager-glance-store.patch
