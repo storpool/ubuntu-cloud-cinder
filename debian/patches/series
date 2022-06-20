@@ -6,3 +6,6 @@ storpool-rm-attach-detach.patch
 storpool-rm-backup-volume.patch
 storpool-cloned-improvements.patch
 storpool-clone-image.patch
+manager-glance-store.patch
+manager-default-glance-store.patch
+manager-glance-store-rbd-fixup.patch

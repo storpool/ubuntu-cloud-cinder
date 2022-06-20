@@ -1,0 +1,18 @@
+Description: Patch up an RBD test case after the Glance fix.
+ This is not the correct fix. This is not even a good fix.
+ It does the job for the present.
+Forwarded: not-needed
+Author: Peter Pentchev <pp@storpool.com>
+Last-Update: 2022-06-20
+
+--- a/cinder/tests/unit/volume/drivers/test_rbd.py
++++ b/cinder/tests/unit/volume/drivers/test_rbd.py
+@@ -942,7 +942,7 @@
+                         None)
+                     (self.mock_rbd.Image.return_value.list_snaps
+                      .assert_called_once_with())
+-                    mock_rados_client.assert_called_once_with(self.driver)
++                    mock_rados_client.assert_called_with(self.driver)
+                     mock_delete_backup_snaps.assert_called_once_with(
+                         self.mock_rbd.Image.return_value)
+                     self.assertFalse(

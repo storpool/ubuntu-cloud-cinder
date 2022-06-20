@@ -1,0 +1,27 @@
+Description: Hardcode a "main" default Glance store when uploading an image.
+Forwarded: not-needed
+Author: Peter Penchev <openstack-dev@storpool.com>
+Last-Update: 2022-06-09
+
+--- a/cinder/volume/manager.py
++++ b/cinder/volume/manager.py
+@@ -1689,7 +1689,7 @@
+             location_metadata['store'] = store_id
+             uri = 'cinder://%s/%s' % (store_id, image_volume.id)
+         else:
+-            uri = 'cinder://%s' % image_volume.id
++            uri = 'cinder://main/%s' % image_volume.id
+ 
+         try:
+             image_registered = image_service.add_location(
+--- a/cinder/tests/unit/volume/test_volume_manager.py
++++ b/cinder/tests/unit/volume/test_volume_manager.py
+@@ -346,7 +346,7 @@
+         image_volume_id = '42'
+         image_volume = mock.MagicMock(spec=['id'])
+         image_volume.id = image_volume_id
+-        url = 'cinder://%(vol)s' % {'vol': image_volume_id}
++        url = 'cinder://main/%(vol)s' % {'vol': image_volume_id}
+ 
+         image_service = mock.MagicMock(spec=['add_location'])
+         image_meta_id = '616'

@@ -1,3 +1,14 @@
+cinder (2:19.0.0-0ubuntu4~cloud0+0~0~0.sp1) focal-xena; urgency=medium
+
+  * Non-maintainer upload for patch tracking only.
+  * Add the manager-glance-store and managet-default-glance-store patches to
+    fix uploading Cinder volumes to Cinder-backed Glance images.
+  * Add the manager-glance-store-rbd-fixup path as a band-aid since there
+    seems to be some interaction between the RBD driver and the Glance store
+    upload URL fix.
+
+ -- Peter Pentchev <pp@storpool.com>  Mon, 20 Jun 2022 14:14:04 +0300
+
 cinder (2:19.0.0-0ubuntu4~cloud0) focal-xena; urgency=medium
 
   * New update for the Ubuntu Cloud Archive.
