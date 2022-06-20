@@ -1,6 +1,7 @@
 patch-botocore-exceptions.patch
 skip-moto-tests.patch
 skip-victoria-failures.patch
+fix-qos-computation.patch
 storpool-rm-attach-detach.patch
 storpool-rm-backup-volume.patch
 storpool-cloned-improvements.patch
