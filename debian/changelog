@@ -1,3 +1,21 @@
+cinder (2:19.1.0-0ubuntu1~cloud0+0~0~0.sp1) focal-xena; urgency=medium
+
+  * Merge the StorPool patches.
+
+ -- Peter Penchev <openstack-dev@storpool.com>  Fri, 26 Aug 2022 11:35:13 +0300
+
+cinder (2:19.1.0-0ubuntu1~cloud0) focal-xena; urgency=medium
+
+  * New upstream release for the Ubuntu Cloud Archive.
+
+ -- Openstack Ubuntu Testing Bot <openstack-testing-bot@ubuntu.com>  Thu, 02 Jun 2022 20:35:51 +0000
+
+cinder (2:19.1.0-0ubuntu1) impish; urgency=medium
+
+  * New stable point release for OpenStack Xena (LP: #1972665).
+
+ -- Felipe Reyes <felipe.reyes@canonical.com>  Mon, 09 May 2022 13:12:55 -0400
+
 cinder (2:19.0.0-0ubuntu4~cloud0+0~0~0.sp1) focal-xena; urgency=medium
 
   * Non-maintainer upload for patch tracking only.
