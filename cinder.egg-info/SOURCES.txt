@@ -2330,6 +2330,7 @@ releasenotes/notes/bug-1920870-ibm-svf-fix-extend-issue-for-mirroring-volumes-31
 releasenotes/notes/bug-1920890-ibm-svf-Retype-in-use-hyperswap-volume-95a6c033e493ee59.yaml
 releasenotes/notes/bug-1920912-add_volumes_to_clone_group_fix-1cc9668ea077831e.yaml
 releasenotes/notes/bug-1922013-ibm-svf-fix_addvol_gmcv_grp-caa0bc2035747d99.yaml
+releasenotes/notes/bug-1922255-dell-powervault-manage-volumes.rst
 releasenotes/notes/bug-1922408-create-encryption-volume-from-snapshot-skip-resize-bb5d77c5e912b5c1.yaml
 releasenotes/notes/bug-1924568-ibm-svf-fix_drp_vol_create_issue-d1b75c4befb0e993.yaml
 releasenotes/notes/bug-1924602-ibm-svf_Storwize_HyperSwap_snapshot_clone_is_failing-c144e6b99d56de64.yaml
@@ -2337,16 +2338,20 @@ releasenotes/notes/bug-1926286-ibm-svf-fix-volume-relationship-properties-fetch-
 releasenotes/notes/bug-1926491-ibm-svf-update-rccg-info-for-mirror-volumes-67fbec05d803745d.yaml
 releasenotes/notes/bug-1931968-ibm-svf-HyperSwap_volume_service_status_update-293dea5d0f750824.yaml
 releasenotes/notes/bug-1935670-svc_update_rep_properties_for_empty_values_fix-a2faabbf2139195e.yaml
+releasenotes/notes/bug-193688-bb045badcd5aecad.yaml
 releasenotes/notes/bug-1938212-ibm-svf-fix-to-add-replication-support-for-V5000E-e88df9c8eb22c2a8.yaml
 releasenotes/notes/bug-1939139-02ab552420813e70.yaml
 releasenotes/notes/bug-1941815-RBD-call-trash-operation-when-plain-deletion-fails-50cef4a8a8010ba9.yaml
+releasenotes/notes/bug-1947518-rbd-open-readonly-ba523c4b0ddbba76.yaml
 releasenotes/notes/bug-fix-1866871-f9d61defc00f4007.yaml
 releasenotes/notes/bug-fix-1867163-27afa39ac77b9e15.yaml
+releasenotes/notes/bug-gpfs-fix-nfs-cow.yaml
 releasenotes/notes/bug-invalid-content-type-1715094-8yu8i9w425ua08f3.yaml
 releasenotes/notes/bug-reno-69539ecb9b0b5464.yaml
 releasenotes/notes/bug1929429-e749f5e5a242a599.yaml
 releasenotes/notes/bug_1828993-8e78d7bbee16ca08.yaml
 releasenotes/notes/bug_1870367-49b74d10a9bfcf07.yaml
+releasenotes/notes/bug_1945824-7f8f238e274ddebd.yaml
 releasenotes/notes/bugfix-1744692-5aebd0c97ae66407.yaml
 releasenotes/notes/bugfix-netapp-driver-cinder-ipv6-c3c4d0d6a7d0de91.yaml
 releasenotes/notes/capacity-based-qos-9f5d174658a40bd5.yaml
@@ -2428,6 +2433,8 @@ releasenotes/notes/deprecate_osapi_volume_base_url-b6984886a902a562.yaml
 releasenotes/notes/deprecate_san_rest_port-0d8610a872e92e09.yaml
 releasenotes/notes/deprecated-ibm-multipath-f06c0e907a6301de.yaml
 releasenotes/notes/deprecated-nas-ip-fd86a734c92f6fae.yaml
+releasenotes/notes/detach-notification-31ae15dafdef36c1.yaml
+releasenotes/notes/detach-race-delete-012820ad9c8dbe16.yaml
 releasenotes/notes/detachedinstanceerror-64be35894c624eae.yaml
 releasenotes/notes/discard-config-option-711a7fbf20685834.yaml
 releasenotes/notes/disco-cinder-driver-9dac5fb04511de1f.yaml
@@ -2484,9 +2491,12 @@ releasenotes/notes/fix-retype-with-az-e048123d982f213d.yaml
 releasenotes/notes/fix-schema-validation-attachment-create-3488914cb52d44d2.yaml
 releasenotes/notes/fix-show-transfer-for-non-admins-be001d79975b325d.yaml
 releasenotes/notes/fix-show-volume-non-admins-1bc5238398e73981.yaml
+releasenotes/notes/fix-size-reporting-seagate-driver.rst
 releasenotes/notes/fix-solidfire-provisioning-report-880141e64c1ea52f.yaml
 releasenotes/notes/fix-solidfire-python3-support-ee02ff2c1ec920f2.yaml
 releasenotes/notes/fix-solidfire-replication-dcb3e59b29950933.yaml
+releasenotes/notes/fix-sub-clone-operation-f42a84ab17930f24.yaml
+releasenotes/notes/fix-transfer-accept-policy-7594806372b14284.yaml
 releasenotes/notes/fix-vol-image-metadata-endpoints-returning-none-ba0590e6c6757b0c.yaml
 releasenotes/notes/force-delete-mv-a53924f09c475386.yaml
 releasenotes/notes/friendly-zone-names-d5e131d356040de0.yaml
@@ -2731,6 +2741,7 @@ releasenotes/notes/powermax-train-tag-removal-1dfa77df7440e5f5.yaml
 releasenotes/notes/powermax-user-defined-hostname-portgroup-0b01aaaa730dfaaf.yaml
 releasenotes/notes/powermax-vol-metadata-acd2555818d25b72.yaml
 releasenotes/notes/powermax_initiator_check-249279d30e3f8322.yaml
+releasenotes/notes/powermax_legacy_generation_fix-09e437f955cd9d70.yaml
 releasenotes/notes/powermax_port-check_enhancement-c95dd94328f31524.yaml
 releasenotes/notes/privsep-rocky-35bdfe70ed62a826.yaml
 releasenotes/notes/project-default-types-3a14ad0d653e604e.yaml
@@ -2740,6 +2751,7 @@ releasenotes/notes/prophetstor-generic-groups-c7136c32b2f75c0a.yaml
 releasenotes/notes/ps-removedriver-5ba447c50f2474e7.yaml
 releasenotes/notes/pure-active-active-support-dbd0d3da3ab64e64.yaml
 releasenotes/notes/pure-active-cluster-edf8e7e80739b0f8.yaml
+releasenotes/notes/pure-check-nvmefc-ports-cf2aec3952d8192f.yaml
 releasenotes/notes/pure-configure-pg-pod-names-525a4ce8e2f46b69.yaml
 releasenotes/notes/pure-custom-user-agent-dcca4cb44b69e763.yaml
 releasenotes/notes/pure-default-replica-interval-07de0a56f61c7c1e.yaml
@@ -2838,6 +2850,7 @@ releasenotes/notes/remove-windows-mapping-51a004f466470a2b.yaml
 releasenotes/notes/remove-xml-api-392b41f387e60eb1.yaml
 releasenotes/notes/remove_deprecated_xml-4065b893d781f65c.yaml
 releasenotes/notes/remove_eseries-bb1bc134645aee50.yaml
+releasenotes/notes/remove_export_failure_leaves_attachment-24e0c648269b0177.yaml
 releasenotes/notes/remove_glusterfs_volume_driver-d8fd2cf5f38e754b.yaml
 releasenotes/notes/remove_lvmdriver-9c35f83132cd2ac8.yaml
 releasenotes/notes/remove_osapi_volume_base_url-33fed24c4ad1b2b6.yaml
