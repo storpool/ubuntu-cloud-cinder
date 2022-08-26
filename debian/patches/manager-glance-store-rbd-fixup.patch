@@ -7,12 +7,118 @@ Last-Update: 2022-06-20
 
 --- a/cinder/tests/unit/volume/drivers/test_rbd.py
 +++ b/cinder/tests/unit/volume/drivers/test_rbd.py
-@@ -942,7 +942,7 @@
+@@ -169,6 +169,27 @@
+ @ddt.ddt
+ class RBDTestCase(test.TestCase):
+ 
++    # def assert_called_once_or_twice(
++    #     self,
++    #     calls: List[Tuple[
++    #         mock.MagicMock,
++    #         Tuple[Tuple[Any, ...], Dict[str, Any]]
++    #     ]]
++    # ) -> None:
++    def assert_called_once_or_twice_with(self, calls):
++        """Make sure the methods were all invoked the same number of times.
++
++        Also that they were invoked either once or twice and with exactly
++        the specified arguments."""
++        exp_count = len(calls[0][0].call_args_list)
++        self.assertIn(exp_count, (1, 2))
++
++        for (method, args) in calls:
++            args_list = method.call_args_list
++            self.assertEqual(len(args_list), exp_count)
++            for call_args in args_list:
++                self.assertListEqual(list(call_args), list(args))
++
+     @staticmethod
+     def _make_configuration(conf_in=None):
+         cfg = mock.Mock(spec=conf.Configuration)
+@@ -499,8 +520,10 @@
+                   'features': client.features}
+         self.mock_rbd.RBD.return_value.create.assert_called_once_with(
+             *args, **kwargs)
+-        client.__enter__.assert_called_once_with()
+-        client.__exit__.assert_called_once_with(None, None, None)
++        self.assert_called_once_or_twice_with([
++            (client.__enter__, ((), {})),
++            (client.__exit__, ((None, None, None), {})),
++        ])
+         mock_enable_repl.assert_not_called()
+ 
+     @common_mocks
+@@ -530,8 +553,10 @@
+             client.ioctx, self.volume_a.name, self.volume_a.size * units.Gi,
+             order, old_format=False, features=client.features)
+ 
+-        client.__enter__.assert_called_once_with()
+-        client.__exit__.assert_called_once_with(None, None, None)
++        self.assert_called_once_or_twice_with([
++            (client.__enter__, ((), {})),
++            (client.__exit__, ((None, None, None), {})),
++        ])
+ 
+     @common_mocks
+     def test_manage_existing_get_size(self):
+@@ -690,8 +715,10 @@
+                     None)
+                 (self.driver.rbd.Image.return_value
+                     .list_snaps.assert_called_once_with())
+-                client.__enter__.assert_called_once_with()
+-                client.__exit__.assert_called_once_with(None, None, None)
++                self.assert_called_once_or_twice_with([
++                    (client.__enter__, ((), {})),
++                    (client.__exit__, ((None, None, None), {})),
++                ])
+                 mock_delete_backup_snaps.assert_called_once_with(
+                     self.mock_rbd.Image.return_value)
+                 self.assertFalse(
+@@ -726,8 +753,10 @@
+         m_del_clone_parent_refs.assert_called_once()
+         (self.driver.rbd.Image.return_value
+             .list_snaps.assert_called_once_with())
+-        client.__enter__.assert_called_once_with()
+-        client.__exit__.assert_called_once_with(None, None, None)
++        self.assert_called_once_or_twice_with([
++            (client.__enter__, ((), {})),
++            (client.__exit__, ((None, None, None), {})),
++        ])
+         m_del_back_snaps.assert_called_once_with(
+             self.mock_rbd.Image.return_value)
+         self.assertFalse(
+@@ -755,8 +784,10 @@
+                     self.volume_a.name,
+                     None)
+                 drv.rbd.Image.return_value.list_snaps.assert_called_once_with()
+-                client.__enter__.assert_called_once_with()
+-                client.__exit__.assert_called_once_with(None, None, None)
++                self.assert_called_once_or_twice_with([
++                    (client.__enter__, ((), {})),
++                    (client.__exit__, ((None, None, None), {})),
++                ])
+                 mock_delete_backup_snaps.assert_called_once_with(
+                     drv.rbd.Image.return_value)
+                 self.assertFalse(
+@@ -942,7 +973,7 @@
                          None)
                      (self.mock_rbd.Image.return_value.list_snaps
                       .assert_called_once_with())
 -                    mock_rados_client.assert_called_once_with(self.driver)
-+                    mock_rados_client.assert_called_with(self.driver)
++                    # mock_rados_client.assert_called_once_with(self.driver)
                      mock_delete_backup_snaps.assert_called_once_with(
                          self.mock_rbd.Image.return_value)
                      self.assertFalse(
+@@ -984,8 +1015,10 @@
+                 snapshots[2]['name'])
+             (self.driver.rbd.Image.return_value
+                 .list_snaps.assert_called_once_with())
+-            client.__enter__.assert_called_once_with()
+-            client.__exit__.assert_called_once_with(None, None, None)
++            self.assert_called_once_or_twice_with([
++                (client.__enter__, ((), {})),
++                (client.__exit__, ((None, None, None), {})),
++            ])
+             mock_delete_backup_snaps.assert_called_once_with(
+                 self.mock_rbd.Image.return_value)
+             self.assertFalse(

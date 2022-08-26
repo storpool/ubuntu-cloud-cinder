@@ -1,6 +1,8 @@
 cinder (2:19.1.0-0ubuntu1~cloud0+0~0~0.sp1) focal-xena; urgency=medium
 
   * Merge the StorPool patches.
+  * Tweak some more Glance-image-related RBD tests in
+    the manager-glance-store-rbd-fixup patch.
 
  -- Peter Penchev <openstack-dev@storpool.com>  Fri, 26 Aug 2022 11:35:13 +0300
 
