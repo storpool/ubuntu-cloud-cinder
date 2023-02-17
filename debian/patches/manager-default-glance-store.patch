@@ -5,7 +5,7 @@ Last-Update: 2022-06-09
 
 --- a/cinder/volume/manager.py
 +++ b/cinder/volume/manager.py
-@@ -1687,7 +1687,7 @@
+@@ -1688,7 +1688,7 @@
              location_metadata['store'] = store_id
              uri = 'cinder://%s/%s' % (store_id, image_volume.id)
          else:

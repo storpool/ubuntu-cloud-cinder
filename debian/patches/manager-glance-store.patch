@@ -167,7 +167,7 @@ Last-Update: 2022-06-09
 +                                                           {'store': store_id})
 --- a/cinder/volume/manager.py
 +++ b/cinder/volume/manager.py
-@@ -1677,7 +1677,6 @@
+@@ -1678,7 +1678,6 @@
                                         image_volume_meta,
                                         False)
  
@@ -175,7 +175,7 @@ Last-Update: 2022-06-09
          image_registered = None
  
          # retrieve store information from extra-specs
-@@ -1686,6 +1685,9 @@
+@@ -1687,6 +1686,9 @@
  
          if store_id:
              location_metadata['store'] = store_id
