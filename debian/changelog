@@ -1,3 +1,10 @@
+cinder (2:19.2.0-0ubuntu1~cloud0+0~0~0.sp1) focal-xena; urgency=medium
+
+  * Non-maintainer upload for patch tracking only.
+  * Merge the StorPool patches.
+
+ -- Peter Pentchev <pp@storpool.com>  Fri, 17 Feb 2023 13:41:09 +0200
+
 cinder (2:19.2.0-0ubuntu1~cloud0) focal-xena; urgency=medium
 
   * New stable point release for OpenStack Xena (LP: #2004032).

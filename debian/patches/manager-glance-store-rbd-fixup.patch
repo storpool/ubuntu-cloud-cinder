@@ -7,7 +7,7 @@ Last-Update: 2022-06-20
 
 --- a/cinder/tests/unit/volume/drivers/test_rbd.py
 +++ b/cinder/tests/unit/volume/drivers/test_rbd.py
-@@ -169,6 +169,27 @@
+@@ -173,6 +173,27 @@
  @ddt.ddt
  class RBDTestCase(test.TestCase):
  
@@ -35,7 +35,7 @@ Last-Update: 2022-06-20
      @staticmethod
      def _make_configuration(conf_in=None):
          cfg = mock.Mock(spec=conf.Configuration)
-@@ -499,8 +520,10 @@
+@@ -514,8 +535,10 @@
                    'features': client.features}
          self.mock_rbd.RBD.return_value.create.assert_called_once_with(
              *args, **kwargs)
@@ -48,7 +48,7 @@ Last-Update: 2022-06-20
          mock_enable_repl.assert_not_called()
  
      @common_mocks
-@@ -530,8 +553,10 @@
+@@ -545,8 +568,10 @@
              client.ioctx, self.volume_a.name, self.volume_a.size * units.Gi,
              order, old_format=False, features=client.features)
  
@@ -61,7 +61,7 @@ Last-Update: 2022-06-20
  
      @common_mocks
      def test_manage_existing_get_size(self):
-@@ -690,8 +715,10 @@
+@@ -705,8 +730,10 @@
                      None)
                  (self.driver.rbd.Image.return_value
                      .list_snaps.assert_called_once_with())
@@ -74,7 +74,7 @@ Last-Update: 2022-06-20
                  mock_delete_backup_snaps.assert_called_once_with(
                      self.mock_rbd.Image.return_value)
                  self.assertFalse(
-@@ -726,8 +753,10 @@
+@@ -741,8 +768,10 @@
          m_del_clone_parent_refs.assert_called_once()
          (self.driver.rbd.Image.return_value
              .list_snaps.assert_called_once_with())
@@ -87,7 +87,7 @@ Last-Update: 2022-06-20
          m_del_back_snaps.assert_called_once_with(
              self.mock_rbd.Image.return_value)
          self.assertFalse(
-@@ -755,8 +784,10 @@
+@@ -770,8 +799,10 @@
                      self.volume_a.name,
                      None)
                  drv.rbd.Image.return_value.list_snaps.assert_called_once_with()
@@ -100,7 +100,7 @@ Last-Update: 2022-06-20
                  mock_delete_backup_snaps.assert_called_once_with(
                      drv.rbd.Image.return_value)
                  self.assertFalse(
-@@ -942,7 +973,7 @@
+@@ -957,7 +988,7 @@
                          None)
                      (self.mock_rbd.Image.return_value.list_snaps
                       .assert_called_once_with())
@@ -109,7 +109,7 @@ Last-Update: 2022-06-20
                      mock_delete_backup_snaps.assert_called_once_with(
                          self.mock_rbd.Image.return_value)
                      self.assertFalse(
-@@ -984,8 +1015,10 @@
+@@ -999,8 +1030,10 @@
                  snapshots[2]['name'])
              (self.driver.rbd.Image.return_value
                  .list_snaps.assert_called_once_with())
