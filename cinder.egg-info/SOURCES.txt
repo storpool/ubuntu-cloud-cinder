@@ -2342,7 +2342,12 @@ releasenotes/notes/bug-193688-bb045badcd5aecad.yaml
 releasenotes/notes/bug-1938212-ibm-svf-fix-to-add-replication-support-for-V5000E-e88df9c8eb22c2a8.yaml
 releasenotes/notes/bug-1939139-02ab552420813e70.yaml
 releasenotes/notes/bug-1941815-RBD-call-trash-operation-when-plain-deletion-fails-50cef4a8a8010ba9.yaml
+releasenotes/notes/bug-1944577-no-manage-to-encrypted-type-b5b5d7f8360f037f.yaml
 releasenotes/notes/bug-1947518-rbd-open-readonly-ba523c4b0ddbba76.yaml
+releasenotes/notes/bug-1957073-0d1307a8637a62b7.yaml
+releasenotes/notes/bug-1965847-fix-backup-import-3b3ccdf740a13cff.yaml
+releasenotes/notes/bug-1970768-temp-vol-delete-6586a13f08d7a5c1.yaml
+releasenotes/notes/bug-1996188-vmdk-subformat-allow-list-93e6943d9a486d11.yaml
 releasenotes/notes/bug-fix-1866871-f9d61defc00f4007.yaml
 releasenotes/notes/bug-fix-1867163-27afa39ac77b9e15.yaml
 releasenotes/notes/bug-gpfs-fix-nfs-cow.yaml
@@ -2358,6 +2363,7 @@ releasenotes/notes/capacity-based-qos-9f5d174658a40bd5.yaml
 releasenotes/notes/capacity-based-qos-minimum-values-b24a5f49c986f11d.yaml
 releasenotes/notes/capacity-headroom-4b07701f1df9e5c4.yaml
 releasenotes/notes/castellan-backend-0c49591a54821c45.yaml
+releasenotes/notes/ceph-backup-no-flatten-36557727e9d73b2b.yaml
 releasenotes/notes/ceph-iscsi-driver-b515bd7fb73ce13b.yaml
 releasenotes/notes/cg-scheduler-change-180a36b77e8cc26b.yaml
 releasenotes/notes/cg_api_volume_type-7db1856776e707c7.yaml
@@ -2484,6 +2490,7 @@ releasenotes/notes/fix-manage-no-action-46b023476e8cd938.yaml
 releasenotes/notes/fix-multiattach-deletion-b3990acf1f5fd378.yaml
 releasenotes/notes/fix-netapp-cg-da4fd6c396e5bedb.yaml
 releasenotes/notes/fix-netapp-force_detach-36bdf75dd2c9a030.yaml
+releasenotes/notes/fix-nfs-revert-to-snap-adc04204b3661d66.yaml
 releasenotes/notes/fix-quota-deleting-temporary-volume-274e371b425e92cc.yaml
 releasenotes/notes/fix-remotefs-clone-volume-locking-385e740d4a5a813b.yaml
 releasenotes/notes/fix-reserve-volume-policy-31790a8d865ee0a1.yaml
@@ -2539,6 +2546,7 @@ releasenotes/notes/hnas-manage-unmanage-snapshot-support-40c8888cc594a7be.yaml
 releasenotes/notes/hnas-remove-iscsi-driver-419e9c08133f9f0a.yaml
 releasenotes/notes/hnas_deprecate_xml-16840b5a8c25d15e.yaml
 releasenotes/notes/hpe-3par-add-alletra-9k-info-5e1d09e083d3faa9.yaml
+releasenotes/notes/hpe-3par-fix-multi-detach-in-multi-host-env-3f2211f29a336b6e.yaml
 releasenotes/notes/hpe-3par-peer-persistence.yaml-91cc84bf89dbb462.yaml
 releasenotes/notes/hpe-3par-pp-primera-a3442d004545b3a9.yaml
 releasenotes/notes/hpe-3par-pp-rcg-policy-options-53271f38c315779f.yaml
@@ -2673,6 +2681,7 @@ releasenotes/notes/netapp-non-discovery-19af4e10f7b190ea.yaml
 releasenotes/notes/netapp-ontap-add-revert-to-snapshot-ce20810bcf094fce.yaml
 releasenotes/notes/netapp-ontap-fix-detach-multiattach-d99d33dff2fefb4c.yaml
 releasenotes/notes/netapp-ontap-fix-force-detach-55be3f4ac962b493.yaml
+releasenotes/notes/netapp-ontap-fix-qos-min-support-svm-scoped-account-a8458445d459023c.yaml
 releasenotes/notes/netapp-ontap-use_exact_size-d03c90efbb8a30ac.yaml
 releasenotes/notes/netapp-solidfire-add-replication-mode-eb26535d0ec78cb4.yaml
 releasenotes/notes/netapp-solidfire-stats-improving-57207f313d7faf42.yaml
@@ -2724,6 +2733,7 @@ releasenotes/notes/powermax-auto-migration-5cc57773c23fef02.yaml
 releasenotes/notes/powermax-bug-1853589-f6c7164177da0496.yaml
 releasenotes/notes/powermax-bug-1875478-8c9072ad9a87b83d.yaml
 releasenotes/notes/powermax-bug-1894086-iterator-expiration-674a28d8b9e13b34.yaml
+releasenotes/notes/powermax-bug-1930290-4f598329a6ced006.yaml
 releasenotes/notes/powermax-create-grp-source-560139c0850e60ce.yaml
 releasenotes/notes/powermax-delete-replication-group-76656e96262201d5.yaml
 releasenotes/notes/powermax-disable-inuse-metro-89e9f398ec9e2672.yaml
@@ -2768,6 +2778,7 @@ releasenotes/notes/pure-storage-multiattach-support-994da363e181d627.yaml
 releasenotes/notes/pure-storage-revert-snapshot-b7e0ec4f958418c4.yaml
 releasenotes/notes/pure-v2.1-replication-0246223caaa8a9b5.yaml
 releasenotes/notes/pure-verify-https-requests-464320c97ba77a1f.yaml
+releasenotes/notes/pure_aa_replication-e3f5f6666f0b0c43.yaml
 releasenotes/notes/pure_fc_personality-3cada97fc940e498.yaml
 releasenotes/notes/pure_fix_clone_cg-cfdf7d16b63882f8.yaml
 releasenotes/notes/pure_sdk_version_checks-257cb8387ed6f5f8.yaml
