@@ -1,6 +1,31 @@
 CHANGES
 =======
 
+19.2.0
+------
+
+* Use the json format output of qemu-img info
+* Check VMDK subformat against an allowed list
+* rbd: Fix snapshot delete when the source volume doesn't exist
+* NFS: Fix generic revert to snapshot flow
+* Unpin flake8-logging-format
+* Pin flake8-logging-format to 0.6.0
+* SF: Remove compat clone image code
+* RBD: Don't flatten temporary resources
+* HPE 3PAR: In multi host env, fix multi-detach operation
+
+19.1.1
+------
+
+* Fix: nfs format info limitation
+* Don't destroy existing backup by mistake on import
+* NetApp ONTAP: Fix check QoS min support for SVM account
+* Prevent temporary volume from being deleted accidentally
+* PureStorage FlashArray: Add active/active replication
+* Handle the case when tempest fails
+* [stable-xena-only] update xena personas doc
+* Prohibit volume manage to an encrypted volume type
+
 19.1.0
 ------
 
@@ -14,6 +39,9 @@ CHANGES
 * Volume transfers: Remove duplicate policy check
 * Reject bad img formats for uploaded encrypted vols
 * NetApp ONTAP: Fix sub-clone zapi call
+* PowerMax Driver - Update unsupported retype combinations
+* PowerMax Driver - QoS should not be set on parent storage group
+* PowerMax Driver - Retype fix for replication
 * [stable-xena-only] update xena personas doc
 * Dell PowerVault: Fix "cinder manageable-list"
 * Seagate driver: fix get\_volume\_size()
