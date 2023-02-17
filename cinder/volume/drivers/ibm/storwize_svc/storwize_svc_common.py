@@ -1157,7 +1157,7 @@ class StorwizeHelpers(object):
         # indicates whether the port can be used for host I/O
         targetportfc_resp = self.ssh.lstargetportfc(current_node_id=node_id,
                                                     host_io_permitted=host_io)
-        if code_level >= (8, 4, 2, 0):
+        if code_level >= (8, 5, 0, 0):
             portset_name = portset if portset else 'portset64'
             port_ids = set()
             fcportsetmember_resp = self.ssh.lsfcportsetmember()
@@ -2286,8 +2286,11 @@ class StorwizeHelpers(object):
     def update_clean_rate(self, volume_name, new_clean_rate):
         mapping_ids = self._get_vdisk_fc_mappings(volume_name)
         for map_id in mapping_ids:
-            self.ssh.chfcmap(map_id,
-                             clean_rate=six.text_type(new_clean_rate))
+            attrs = self._get_flashcopy_mapping_attributes(map_id)
+            # chfcmap should not be called for rc_controlled fcmap
+            if attrs is not None and attrs['rc_controlled'] != 'yes':
+                self.ssh.chfcmap(map_id,
+                                 clean_rate=str(new_clean_rate))
 
     def check_flashcopy_rate(self, flashcopy_rate):
         if not self.code_level:
