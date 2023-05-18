@@ -1,12 +1,24 @@
 CHANGES
 =======
 
+19.3.0
+------
+
+* Remove multiatttach request parameter
+* PowerMax Driver - Get manageable volumes fix
+
 19.2.0
 ------
 
+* mypy: Allow mypy to pass with requests-packaged urllib3
+* Fix and unify capacity calculations
+* Erroneous log message args location causes a misconception
 * Use the json format output of qemu-img info
+* [stable-only] Pin tox <4
+* Fix Infinidat driver to return all iSCSI portals
 * Check VMDK subformat against an allowed list
 * rbd: Fix snapshot delete when the source volume doesn't exist
+* PowerStore driver - Request data validation fix
 * NFS: Fix generic revert to snapshot flow
 * Unpin flake8-logging-format
 * Pin flake8-logging-format to 0.6.0
