@@ -2,6 +2,7 @@ patch-botocore-exceptions.patch
 skip-moto-tests.patch
 skip-victoria-failures.patch
 fix-qos-computation.patch
+#CVE-2023-2088.patch
 storpool-drop-attach-detach.patch
 storpool-drop-backup-volume.patch
 storpool-cloned-volume.patch
