@@ -1,3 +1,10 @@
+cinder (2:19.3.0-0ubuntu1~cloud1+0~0~0.sp1) focal-xena; urgency=medium
+
+  * Non-maintainer upload for patch tracking only.
+  * Merge the StorPool patches.
+
+ -- Peter Pentchev <pp@storpool.com>  Wed, 09 Aug 2023 18:21:49 +0300
+
 cinder (2:19.3.0-0ubuntu1~cloud1) focal-xena; urgency=medium
 
   * SECURITY REGRESSION: Regressions in other projects (LP: #2020111)
