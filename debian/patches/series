@@ -9,3 +9,4 @@ storpool-clone-image.patch
 manager-glance-store.patch
 manager-default-glance-store.patch
 manager-glance-store-rbd-fixup.patch
+#CVE-2023-2088.patch

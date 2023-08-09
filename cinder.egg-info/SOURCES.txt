@@ -2344,9 +2344,11 @@ releasenotes/notes/bug-1939139-02ab552420813e70.yaml
 releasenotes/notes/bug-1941815-RBD-call-trash-operation-when-plain-deletion-fails-50cef4a8a8010ba9.yaml
 releasenotes/notes/bug-1944577-no-manage-to-encrypted-type-b5b5d7f8360f037f.yaml
 releasenotes/notes/bug-1947518-rbd-open-readonly-ba523c4b0ddbba76.yaml
+releasenotes/notes/bug-1953168-fix-capacity-filter-message-456dea41fa8a4a1b.yaml
 releasenotes/notes/bug-1957073-0d1307a8637a62b7.yaml
 releasenotes/notes/bug-1965847-fix-backup-import-3b3ccdf740a13cff.yaml
 releasenotes/notes/bug-1970768-temp-vol-delete-6586a13f08d7a5c1.yaml
+releasenotes/notes/bug-1981354-infinidat-iscsi-fix-multipath-3f8a0be5f541c66e.yaml
 releasenotes/notes/bug-1996188-vmdk-subformat-allow-list-93e6943d9a486d11.yaml
 releasenotes/notes/bug-fix-1866871-f9d61defc00f4007.yaml
 releasenotes/notes/bug-fix-1867163-27afa39ac77b9e15.yaml
@@ -2741,6 +2743,7 @@ releasenotes/notes/powermax-expand-replicated-volume-124c62ea78b1c347.yaml
 releasenotes/notes/powermax-failover-abilities-1fa0a23128f1c00b.yaml
 releasenotes/notes/powermax-inuse-retype-support-64bd35adab17420d.yaml
 releasenotes/notes/powermax-load-balance-9cd152e53ecb34fd.yaml
+releasenotes/notes/powermax-manageable-volumes-3fb4e5dcf5cc18e3.yaml
 releasenotes/notes/powermax-multiple-replication-devices-0cc532ae621ea9a5.yaml
 releasenotes/notes/powermax-ode-metro-support-ed50bb20f932548b.yaml
 releasenotes/notes/powermax-snapvx-link-mode-0050ac6b4a16c739.yaml
@@ -2753,6 +2756,7 @@ releasenotes/notes/powermax-vol-metadata-acd2555818d25b72.yaml
 releasenotes/notes/powermax_initiator_check-249279d30e3f8322.yaml
 releasenotes/notes/powermax_legacy_generation_fix-09e437f955cd9d70.yaml
 releasenotes/notes/powermax_port-check_enhancement-c95dd94328f31524.yaml
+releasenotes/notes/powerstore-request-data-validation-6268f2ed07b7bf40.yaml
 releasenotes/notes/privsep-rocky-35bdfe70ed62a826.yaml
 releasenotes/notes/project-default-types-3a14ad0d653e604e.yaml
 releasenotes/notes/promotion_offline_r1_fix-f7a008d0d13a3eff.yaml
@@ -2847,6 +2851,7 @@ releasenotes/notes/remove-ibm-nas-driver-0ed204ed0a2dcf55.yaml
 releasenotes/notes/remove-iscsi-target-config-options-d23e424eb8f82042.yaml
 releasenotes/notes/remove-lvm-over-sub-3c8addbf47827045.yaml
 releasenotes/notes/remove-mirrorpolicy-parameter-from-huawei-driver-d32257a60d32fd90.yaml
+releasenotes/notes/remove-multiattach-request-param-4444e02533f919da.yaml
 releasenotes/notes/remove-nas-ip-config-option-8d56c14f1f4614fc.yaml
 releasenotes/notes/remove-nested-quota-driver-8b56f03694e3a694.yaml
 releasenotes/notes/remove-netapp-teseries-thost-type-config-option-908941dc7d2a1d59.yaml
@@ -2928,6 +2933,7 @@ releasenotes/notes/sheepdog-driver-removal-b63d12460e886c33.yaml
 releasenotes/notes/sheepdog-mark-unsupported-648b2458d4a198de.yaml
 releasenotes/notes/show-provider-id-for-admin-ff4fd5a2518a4bfa.yaml
 releasenotes/notes/slow-get-volume-stats-91b84c6e661dc605.yaml
+releasenotes/notes/slug-b6a0fc3db0a2dd45.yaml
 releasenotes/notes/slug-qnap-driver-d4465ea6009c66df.yaml
 releasenotes/notes/smbfs-drop-alloc-data-file-8b94da952a3b1548.yaml
 releasenotes/notes/smbfs-fixed-image-9b642b63fcb79c18.yaml
