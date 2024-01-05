@@ -1,3 +1,15 @@
+cinder (2:20.3.1-0ubuntu1+0~0~0.sp1) jammy-yoga; urgency=medium
+
+  * Non-maintainer upload for patch tracking only.
+  * Add the StorPool patches:
+    - hardcode a "main" Glance store when uploading images
+    - send the correct location URI to the Glance v2 API
+    - allow images to be cloned across pools
+    - fix a couple of bugs in the StorPool driver
+    - add iSCSI support to the StorPool driver
+
+ -- Peter Pentchev <pp@storpool.com>  Fri, 05 Jan 2024 15:53:53 +0200
+
 cinder (2:20.3.1-0ubuntu1) jammy; urgency=medium
 
   * New stable point release for OpenStack Yoga (LP: #2037332).

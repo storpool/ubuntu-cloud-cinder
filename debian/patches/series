@@ -2,3 +2,10 @@ patch-botocore-exceptions.patch
 skip-moto-tests.patch
 skip-victoria-failures.patch
 fix-qos-computation.patch
+storpool-drop-attach-detach.patch
+storpool-drop-backup-volume.patch
+storpool-cloned-volume.patch
+storpool-clone-image.patch
+storpool-iscsi.patch
+manager-glance-store.patch
+manager-default-glance-store.patch
